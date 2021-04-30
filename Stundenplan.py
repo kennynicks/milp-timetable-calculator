@@ -87,12 +87,6 @@ lessons = range(len(teacherCategoryCombinations))
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
 
-p_hourDeviation = {
-    (teacher): LpVariable("Stundenabweichung von %s" %
-                          (teachers_cleartext[teacher]), cat=LpInteger, lowBound=0, upBound=4)
-    for teacher in teachers
-}
-
 ##############
 
 x = {
@@ -202,8 +196,6 @@ for day in days:
             problem.addConstraint(
                 lpSum(x[(day, slot, clazz, lesson)] for lesson in lessons) == 1 * slot_used[(day, slot, clazz)])
 
-#! ohne p_hourDeviation!!
-
 # Jeder Lehrer darf nur eine bestimmte Stundenzahl pro Woche unterrichten
 for teacher in teachers:
     problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
@@ -212,7 +204,9 @@ for teacher in teachers:
                                 for clazz in classes
                                 for lesson in lessons
                                 if teacher in teacherCategoryCombinations[lesson]["teachers"]
-                                ) == teacherLessons[teacher] - p_hourDeviation[teacher])
+                                ) == teacherLessons[teacher])
+
+#TODO Klassenstufen gleichzeitig schluss (1a+1b gleichzeitig!) => kann muss aber nicht
 
 # Keine FREISTUNDEN
 for day in days:
@@ -221,7 +215,7 @@ for day in days:
             problem.addConstraint(
                 slot_used[(day, slot, clazz)] - slot_used[(day, slot + 1, clazz)] >= 0)
 
-#! nicht zwingend aber höchst wünschenswert
+#TODO nicht zwingend aber höchst wünschenswert
 # keine SPRINGSTUNDEN
 for teacher in teachers:
     for day in days:
@@ -243,7 +237,7 @@ for clazz in classes:
                                     if teacher in teacherCategoryCombinations[lesson]["teachers"]
                                     ) <= 29 * class_teached_by[(clazz, teacher)])
 
-#! nicht zwingend aber höchst wünschenswert (möglichst nicht 1./2.)
+#TODO nicht zwingend aber höchst wünschenswert (möglichst nicht 1./2.)
 # Jede Klasse hat maximal drei Lehrkräfte
 for clazz in classes:
     problem.addConstraint(lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
@@ -256,7 +250,7 @@ problem.setObjective(lpSum(x[(day, slot, clazz, lesson)]
                            for lesson in lessons
                            for teacher in teacherCategoryCombinations[lesson]["teachers"]
                            if teacher in classTeachers[clazz]
-                           ) + lpSum(teacherLessons[teacher] - p_hourDeviation[teacher] for teacher in teachers))
+                           ))
 
 # The problem is solved using PuLP's choice of Solver
 problem.solve(GUROBI_CMD())
@@ -301,21 +295,16 @@ for teacher in teachers:
                 )
     teacher_hours.append([teachers_cleartext[teacher], teacherLessons[teacher],
                           hours, hours - teacherLessons[teacher]])
-print()
-print()
-print(tabulate(teacher_hours, headers=[
-    "Teacher", "Hours", "Actual", "Difference"]))
 
-# Klassenstufen gleichzeitig schluss (1a+1b gleichzeitig!) => kann muss aber nicht
-# persönliche präferenzen
-# religion am ende des tages => muss
-# schwimmen MUSS in doppelbesetzung
-# sport und religion KEINE doppelbesetzung
-# einmal in der woche alle lehrer gleichzeitig schluss => muss (montag)
-# fixe schwimmzeiten
-# teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
-# fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
-# gewichtung doppelbesetzungen => vorallem 1./2.
-# OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
-# förder: 2st jeder tag migrationskinder; möglichst alle klassen unterricht (muss aber nicht)
-# [russ/türk: max 2 stufen. am besten 2; teilweise parallel zum unterricht]
+#TODO persönliche präferenzen
+#TODO religion am ende des tages => muss
+#TODO schwimmen MUSS in doppelbesetzung
+#TODO sport und religion KEINE doppelbesetzung
+#TODO einmal in der woche alle lehrer gleichzeitig schluss => muss (montag)
+#TODO fixe schwimmzeiten
+#TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
+#TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
+#TODO gewichtung doppelbesetzungen => vorallem 1./2.
+#TODO OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
+#TODO förder: 2st jeder tag migrationskinder; möglichst alle klassen unterricht (muss aber nicht)
+#TODO [russ/türk: max 2 stufen. am besten 2; teilweise parallel zum unterricht]
