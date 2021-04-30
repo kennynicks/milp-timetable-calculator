@@ -152,6 +152,29 @@ teacher_day_slot_combination = {
     for slot_combination in n_slot_combinations
 }
 
+grade_levels = {
+    0: (0, 1,),
+    1: (2, 3,),
+    2: (4, 5,),
+    3: (6, 7,)
+}
+
+grade_levels_clear_text = {
+    0: "erste",
+    1: "zweite",
+    2: "dritte",
+    3: "vierte"
+}
+
+n_grade_levels = range(len(grade_levels))
+
+p_school_end_deviation = {
+    (day, grade_level): LpVariable("Stundenabweichung der Stufe %s am %s" %
+                                   (grade_levels_clear_text[grade_level], days_cleartext[day]), cat=LpInteger, lowBound=0)
+    for grade_level in n_grade_levels
+    for day in days
+}
+
 class_teached_by = {
     (clazz, teacher): LpVariable("Klasse %s wird in der Woche von %s unterrichtet"
                                  % (classes_cleartext[clazz],
@@ -206,7 +229,16 @@ for teacher in teachers:
                                 if teacher in teacherCategoryCombinations[lesson]["teachers"]
                                 ) == teacherLessons[teacher])
 
-#TODO Klassenstufen gleichzeitig schluss (1a+1b gleichzeitig!) => kann muss aber nicht
+# Alle Klassenstufen haben paarweise gleichzeitig schluss (1a+1b gleichzeitig!) => kann muss aber nicht
+for grade_level in n_grade_levels:
+    for day in days:
+        for clazz in grade_levels[grade_level][:-1]:
+            problem.addConstraint((lpSum(x[(day, slot, clazz, lesson)]
+                                          for lesson in lessons
+                                          for slot in slots)-lpSum(
+                x[(day, slot, clazz+1, lesson)]
+                for lesson in lessons
+                for slot in slots)) == p_school_end_deviation[(day, grade_level)])
 
 # Keine FREISTUNDEN
 for day in days:
@@ -215,7 +247,7 @@ for day in days:
             problem.addConstraint(
                 slot_used[(day, slot, clazz)] - slot_used[(day, slot + 1, clazz)] >= 0)
 
-#TODO nicht zwingend aber höchst wünschenswert
+# TODO nicht zwingend aber höchst wünschenswert
 # keine SPRINGSTUNDEN
 for teacher in teachers:
     for day in days:
@@ -237,10 +269,11 @@ for clazz in classes:
                                     if teacher in teacherCategoryCombinations[lesson]["teachers"]
                                     ) <= 29 * class_teached_by[(clazz, teacher)])
 
-#TODO nicht zwingend aber höchst wünschenswert (möglichst nicht 1./2.)
+# TODO nicht zwingend aber höchst wünschenswert (möglichst nicht 1./2.)
 # Jede Klasse hat maximal drei Lehrkräfte
 for clazz in classes:
-    problem.addConstraint(lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
+    problem.addConstraint(
+        lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
 
 # Maximize teacher hours in main class
 problem.setObjective(lpSum(x[(day, slot, clazz, lesson)]
@@ -250,7 +283,9 @@ problem.setObjective(lpSum(x[(day, slot, clazz, lesson)]
                            for lesson in lessons
                            for teacher in teacherCategoryCombinations[lesson]["teachers"]
                            if teacher in classTeachers[clazz]
-                           ))
+                           )-lpSum(p_school_end_deviation[(day, grade_level)]
+                                   for grade_level in n_grade_levels
+                                   for day in days))
 
 # The problem is solved using PuLP's choice of Solver
 problem.solve(GUROBI_CMD())
@@ -276,7 +311,7 @@ for day in days:
                 fach = {0: "", 1: " 'E'"}
                 slot_data.append(", ".join(list(map(
                     lambda x: teachers_cleartext[x], teacherCategoryCombinations[lesson]["teachers"]))) + fach[
-                                     teacherCategoryCombinations[lesson]["category"]])
+                    teacherCategoryCombinations[lesson]["category"]])
 
 for day in days:
     print()
@@ -296,15 +331,15 @@ for teacher in teachers:
     teacher_hours.append([teachers_cleartext[teacher], teacherLessons[teacher],
                           hours, hours - teacherLessons[teacher]])
 
-#TODO persönliche präferenzen
-#TODO religion am ende des tages => muss
-#TODO schwimmen MUSS in doppelbesetzung
-#TODO sport und religion KEINE doppelbesetzung
-#TODO einmal in der woche alle lehrer gleichzeitig schluss => muss (montag)
-#TODO fixe schwimmzeiten
-#TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
-#TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
-#TODO gewichtung doppelbesetzungen => vorallem 1./2.
-#TODO OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
-#TODO förder: 2st jeder tag migrationskinder; möglichst alle klassen unterricht (muss aber nicht)
-#TODO [russ/türk: max 2 stufen. am besten 2; teilweise parallel zum unterricht]
+# TODO persönliche präferenzen
+# TODO religion am ende des tages => muss
+# TODO schwimmen MUSS in doppelbesetzung
+# TODO sport und religion KEINE doppelbesetzung
+# TODO einmal in der woche alle lehrer gleichzeitig schluss => muss (montag)
+# TODO fixe schwimmzeiten
+# TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
+# TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
+# TODO gewichtung doppelbesetzungen => vorallem 1./2.
+# TODO OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
+# TODO förder: 2st jeder tag migrationskinder; möglichst alle klassen unterricht (muss aber nicht)
+# TODO [russ/türk: max 2 stufen. am besten 2; teilweise parallel zum unterricht]
