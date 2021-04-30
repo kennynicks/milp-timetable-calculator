@@ -5,6 +5,9 @@ from pulp import *
 from tabulate import tabulate
 import itertools
 
+
+################## INPUT DATA ##################
+
 # Tage
 days_cleartext = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
 days = range(len(days_cleartext))
@@ -85,35 +88,6 @@ for combination in teacherCombinations:
 
 lessons = range(len(teacherCategoryCombinations))
 
-problem = LpProblem("Stundenplan", sense=LpMaximize)
-
-##############
-
-x = {
-    (day, slot, clazz, lesson): LpVariable("Am %s in der %s Stunde wird in der Klasse %s %s von %s unterrichtet"
-                                           % (days_cleartext[day],
-                                              slots_cleartext[slot],
-                                              classes_cleartext[clazz],
-                                              teacherCategoryCombinations[lesson]["category"],
-                                              teacherCategoryCombinations[lesson]["teachers"]
-                                              ), cat=LpBinary)
-    for day in days
-    for slot in slots
-    for clazz in classes
-    for lesson in lessons
-}
-
-slot_used = {
-    (day, slot, clazz): LpVariable("Am Tag %s in der Klasse %s wird in der %s Stunde unterrichtet"
-                                   % (days_cleartext[day],
-                                      classes_cleartext[clazz],
-                                      slots_cleartext[slot],
-                                      ), cat=LpBinary)
-    for day in days
-    for slot in slots
-    for clazz in classes
-}
-
 slot_combinations = {
     0: [0, 0, 0, 0, 0, 0],
     1: [1, 0, 0, 0, 0, 0],
@@ -141,17 +115,6 @@ slot_combinations = {
 
 n_slot_combinations = range(len(slot_combinations))
 
-teacher_day_slot_combination = {
-    (teacher, day, slot_combination): LpVariable("Am Tag %s hat Lehrer %s die Stunden-Kombination %s"
-                                                 % (days_cleartext[day],
-                                                    teachers_cleartext[teacher],
-                                                    slot_combination,
-                                                    ), cat=LpBinary)
-    for day in days
-    for teacher in teachers
-    for slot_combination in n_slot_combinations
-}
-
 grade_levels = {
     0: (0, 1,),
     1: (2, 3,),
@@ -167,7 +130,9 @@ grade_levels_clear_text = {
 }
 
 n_grade_levels = range(len(grade_levels))
+################################################
 
+##################  VARIABLES  ##########################
 p_school_end_deviation = {
     (day, grade_level): LpVariable("Stundenabweichung der Stufe %s am %s" %
                                    (grade_levels_clear_text[grade_level], days_cleartext[day]), cat=LpInteger, lowBound=0)
@@ -183,6 +148,49 @@ class_teached_by = {
     for clazz in classes
     for teacher in teachers
 }
+
+teacher_day_slot_combination = {
+    (teacher, day, slot_combination): LpVariable("Am Tag %s hat Lehrer %s die Stunden-Kombination %s"
+                                                 % (days_cleartext[day],
+                                                    teachers_cleartext[teacher],
+                                                    slot_combination,
+                                                    ), cat=LpBinary)
+    for day in days
+    for teacher in teachers
+    for slot_combination in n_slot_combinations
+}
+
+x = {
+    (day, slot, clazz, lesson): LpVariable("Am %s in der %s Stunde wird in der Klasse %s %s von %s unterrichtet"
+                                           % (days_cleartext[day],
+                                              slots_cleartext[slot],
+                                              classes_cleartext[clazz],
+                                              teacherCategoryCombinations[lesson]["category"],
+                                              teacherCategoryCombinations[lesson]["teachers"]
+                                              ), cat=LpBinary)
+    for day in days
+    for slot in slots
+    for clazz in classes
+    for lesson in lessons
+}
+
+slot_used = {
+    (day, slot, clazz): LpVariable("Am Tag %s in der Klasse %s wird in der %s Stunde unterrichtet"
+                                   % (days_cleartext[day],
+                                      classes_cleartext[clazz],
+                                      slots_cleartext[slot],
+                                      ), cat=LpBinary)
+    for day in days
+    for slot in slots
+    for clazz in classes
+}
+
+#########################################################
+
+problem = LpProblem("Stundenplan", sense=LpMaximize)
+
+
+##################  CONSTRAINTS  ########################
 
 # Jede Klasse hat max n stunden aus kategorie c pro Woche
 for clazz in classes:
@@ -275,6 +283,11 @@ for clazz in classes:
     problem.addConstraint(
         lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
 
+########################################################
+
+
+#################  OBJECTIVE  ##################
+
 # Maximize teacher hours in main class
 problem.setObjective(lpSum(x[(day, slot, clazz, lesson)]
                            for day in days
@@ -287,8 +300,11 @@ problem.setObjective(lpSum(x[(day, slot, clazz, lesson)]
                                    for grade_level in n_grade_levels
                                    for day in days))
 
+################################################
 # The problem is solved using PuLP's choice of Solver
 problem.solve(GUROBI_CMD())
+
+#################  OUTPUT  ##################
 
 # The status of the solution is printed to the screen
 print("Status:", LpStatus[problem.status])
@@ -330,7 +346,7 @@ for teacher in teachers:
                 )
     teacher_hours.append([teachers_cleartext[teacher], teacherLessons[teacher],
                           hours, hours - teacherLessons[teacher]])
-
+#############################################
 # TODO persönliche präferenzen
 # TODO religion am ende des tages => muss
 # TODO schwimmen MUSS in doppelbesetzung
