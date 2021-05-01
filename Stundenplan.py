@@ -113,6 +113,20 @@ slot_combinations = {
     21: [1, 1, 1, 1, 1, 1],
 }
 
+last_slot_to_slot_combinations = {
+    -1: (0,),
+    0: (1,),
+    1: (2, 7,),
+    2: (3, 8, 12,),
+    3: (4, 9, 13, 16,),
+    4: (5, 10, 14, 17, 19,),
+    5: (6, 11, 15, 18, 20, 21,),
+}
+
+
+school_end_slots = [-1, *slots]
+
+
 n_slot_combinations = range(len(slot_combinations))
 
 grade_levels = {
@@ -185,6 +199,20 @@ slot_used = {
     for clazz in classes
 }
 
+teacher_school_end = {
+    (teacher, day, school_end_slot): LpVariable("Am %s hat %s ab Slot %s frei"
+                                                % (days_cleartext[day], teachers_cleartext[teacher], school_end_slot), cat=LpBinary)
+    for day in days
+    for teacher in teachers
+    for school_end_slot in school_end_slots
+}
+
+same_day_school_end = {
+    (day, school_end_slot): LpVariable("Am %s haben alle ab der %s Stunde schluss" % (days_cleartext[day], school_end_slot), cat=LpBinary,)
+    for day in days
+    for school_end_slot in school_end_slots
+}
+
 #########################################################
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
@@ -255,6 +283,26 @@ for day in days:
             problem.addConstraint(
                 slot_used[(day, slot, clazz)] - slot_used[(day, slot + 1, clazz)] >= 0)
 
+# Alle Lehrer haben mindestens einmal die Woche gleichzeitig Schluss => muss
+for teacher in teachers:
+    for day in days:
+        for school_end_slot in school_end_slots:
+            problem.addConstraint(teacher_school_end[(
+                teacher, day, school_end_slot)] ==
+                lpSum(teacher_day_slot_combination[(teacher, day, slot_combination)] for slot_combination in last_slot_to_slot_combinations[school_end_slot]))
+
+for day in days:
+    for school_end_slot in school_end_slots:
+        problem.addConstraint((lpSum(teacher_school_end[(teacher, day, school_end_slot)] for teacher in teachers) - (len(
+            teachers)-lpSum(teacher_school_end[(teacher, day, -1)]for teacher in teachers)))*-1 <= 13*(1-same_day_school_end[(day, school_end_slot)]))
+
+for day in days:
+    problem.addConstraint(lpSum(same_day_school_end[(day,school_end_slot)] for school_end_slot in school_end_slots)<=1)
+
+problem.addConstraint(lpSum(same_day_school_end[(
+    day, school_end_slot)] for school_end_slot in school_end_slots for day in days) >= 1)
+
+
 # TODO nicht zwingend aber höchst wünschenswert
 # keine SPRINGSTUNDEN
 for teacher in teachers:
@@ -302,6 +350,7 @@ problem.setObjective(lpSum(x[(day, slot, clazz, lesson)]
 
 ################################################
 # The problem is solved using PuLP's choice of Solver
+print("Constraints: %s" % (len(problem.constraints)))
 problem.solve(GUROBI_CMD())
 
 #################  OUTPUT  ##################
@@ -335,23 +384,15 @@ for day in days:
     print(tabulate(day_data[day], headers=[
         "Stunde", *["%s - %s" % x for x in zip(classes_cleartext, classTeacherNames)]]))
 
-teacher_hours = []
-for teacher in teachers:
-    hours = sum(value(x[(day, slot, clazz, lesson)])
-                for day in days
-                for slot in slots
-                for clazz in classes
-                for lesson in lessons
-                if teacher in teacherCategoryCombinations[lesson]["teachers"]
-                )
-    teacher_hours.append([teachers_cleartext[teacher], teacherLessons[teacher],
-                          hours, hours - teacherLessons[teacher]])
+print()
+for day in days:
+    if sum(value(same_day_school_end[(day,school_end_slot)])for school_end_slot in school_end_slots) == 1:
+        print("Gemeinsam Schluss am %s"% (days_cleartext[day]))
 #############################################
 # TODO persönliche präferenzen
 # TODO religion am ende des tages => muss
 # TODO schwimmen MUSS in doppelbesetzung
 # TODO sport und religion KEINE doppelbesetzung
-# TODO einmal in der woche alle lehrer gleichzeitig schluss => muss (montag)
 # TODO fixe schwimmzeiten
 # TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
 # TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
@@ -359,3 +400,5 @@ for teacher in teachers:
 # TODO OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
 # TODO förder: 2st jeder tag migrationskinder; möglichst alle klassen unterricht (muss aber nicht)
 # TODO [russ/türk: max 2 stufen. am besten 2; teilweise parallel zum unterricht]
+# TODO englisch immer an zwei verschiedenen Tagen unterrichten
+# TODO sport in der 3. und 4. muss Doppelstunde sein (1./2. ist egal)
