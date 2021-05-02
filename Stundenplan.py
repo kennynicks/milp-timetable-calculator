@@ -213,6 +213,12 @@ same_day_school_end = {
     for school_end_slot in school_end_slots
 }
 
+teacher_day_ogs = {
+    (teacher, day): LpVariable("%s hat am %s OGS" % (teachers_cleartext[teacher], days_cleartext[day]), cat=LpBinary)
+    for teacher in teachers
+    for day in days
+}
+
 #########################################################
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
@@ -283,7 +289,7 @@ for day in days:
             problem.addConstraint(
                 slot_used[(day, slot, clazz)] - slot_used[(day, slot + 1, clazz)] >= 0)
 
-# Alle Lehrer haben mindestens einmal die Woche gleichzeitig Schluss => muss
+# Alle Lehrer haben mindestens einmal die Woche gleichzeitig Schluss => muss (am besten Montags)
 for teacher in teachers:
     for day in days:
         for school_end_slot in school_end_slots:
@@ -331,6 +337,23 @@ for clazz in classes:
     problem.addConstraint(
         lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
 
+#! TODO OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
+# genau drei mal ogs
+problem.addConstraint(lpSum(
+    teacher_day_ogs[(teacher, day)] for teacher in teachers for day in days) == 3)
+# jeder lehrer maximal ein mal ogs
+for teacher in teachers:
+    problem.addConstraint(
+        lpSum(teacher_day_ogs[(teacher, day)] for day in days) <= 1)
+# an jedem tag maxinmal einmal ogs
+for day in days:
+    problem.addConstraint(
+        lpSum(teacher_day_ogs[(teacher, day)] for teacher in teachers) <= 1)
+
+for teacher in teachers:
+    for day in days:
+        problem.addConstraint(
+            teacher_day_ogs[(teacher, day)] <= teacher_school_end[(teacher, day, 5)])
 ########################################################
 
 
@@ -377,6 +400,13 @@ for day in days:
                 slot_data.append(", ".join(list(map(
                     lambda x: teachers_cleartext[x], teacherCategoryCombinations[lesson]["teachers"]))) + fach[
                     teacherCategoryCombinations[lesson]["category"]])
+    day_data[day].append(["7."])
+    teacher_ogs_data = ["8."]
+    for teacher in teachers:
+        if value(teacher_day_ogs[(teacher, day)]) == 1:
+            teacher_ogs_data.append("OGS von %s" %
+                                    (teachers_cleartext[teacher]))
+    day_data[day].append(teacher_ogs_data)
 
 for day in days:
     print()
@@ -386,8 +416,8 @@ for day in days:
 
 print()
 for day in days:
-    if sum(value(same_day_school_end[(day,school_end_slot)])for school_end_slot in school_end_slots) == 1:
-        print("Gemeinsam Schluss am %s"% (days_cleartext[day]))
+    if sum(value(same_day_school_end[(day, school_end_slot)])for school_end_slot in school_end_slots) == 1:
+        print("Gemeinsam Schluss am %s" % (days_cleartext[day]))
 #############################################
 # TODO persönliche präferenzen
 # TODO religion am ende des tages => muss
@@ -397,7 +427,6 @@ for day in days:
 # TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
 # TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
 # TODO gewichtung doppelbesetzungen => vorallem 1./2.
-# TODO OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
 # TODO förder: 2st jeder tag migrationskinder; möglichst alle klassen unterricht (muss aber nicht)
 # TODO [russ/türk: max 2 stufen. am besten 2; teilweise parallel zum unterricht]
 # TODO englisch immer an zwei verschiedenen Tagen unterrichten
