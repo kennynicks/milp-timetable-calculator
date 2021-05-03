@@ -254,6 +254,13 @@ for teacher in teachers:
                 teacher_day_slot_combination[(teacher, day, combination)] * slot_combinations[combination][slot] for
                 combination in n_slot_combinations))
 
+# An jedem Tag hat jede Klasse maximal eine Stunde englisch
+for day in days:
+    for clazz in classes:
+        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                              for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 1) <= 1)
+
+
 # Für jeden Slot darf nur eine Combination ausgewählt sein
 for day in days:
     for slot in slots:
@@ -337,7 +344,7 @@ for clazz in classes:
     problem.addConstraint(
         lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
 
-#! TODO OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
+# OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
 # genau drei mal ogs
 problem.addConstraint(lpSum(
     teacher_day_ogs[(teacher, day)] for teacher in teachers for day in days) == 3)
@@ -429,5 +436,4 @@ for day in days:
 # TODO gewichtung doppelbesetzungen => vorallem 1./2.
 # TODO förder: 2st jeder tag migrationskinder; möglichst alle klassen unterricht (muss aber nicht)
 # TODO [russ/türk: max 2 stufen. am besten 2; teilweise parallel zum unterricht]
-# TODO englisch immer an zwei verschiedenen Tagen unterrichten
 # TODO sport in der 3. und 4. muss Doppelstunde sein (1./2. ist egal)
