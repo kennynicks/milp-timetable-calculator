@@ -47,10 +47,10 @@ class_categories_raw = [
     [23, 2, 0, 0, 0, 1, 0],
     [23, 2, 0, 0, 0, 1, 0],
     [23, 2, 0, 0, 0, 1, 0],
-    [23, 2, 0, 0, 0, 0, 1],
-    [23, 2, 0, 0, 0, 0, 1],
-    [23, 2, 0, 0, 0, 0, 1],
-    [23, 2, 0, 0, 0, 0, 1],
+    [22, 2, 0, 0, 0, 0, 1],
+    [22, 2, 0, 0, 0, 0, 1],
+    [22, 2, 0, 0, 0, 0, 1],
+    [22, 2, 0, 0, 0, 0, 1],
     [0, 0, 10, 0, 0, 0, 0]
 ]
 
@@ -88,7 +88,14 @@ for combination in teacherCombinations:
     categories = list(set(itertools.chain.from_iterable(
         [teacherCategories[teacher] for teacher in combination])))
     for category in categories:
+        # förder nicht in doppelbesetzung
         if category == 2 and len(combination) == 2:
+            continue
+        # * religion nicht in doppelbesetzung
+        if category == 5 and len(combination) == 2:
+            continue
+        # * religion nicht in doppelbesetzung
+        if category == 6 and len(combination) == 2:
             continue
         teacherCategoryCombinations.append({
             "teachers": combination,
@@ -239,10 +246,8 @@ teacher_day_ogs = {
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
 
-
 ##################  CONSTRAINTS  ########################
-
-# * Jede Klasse hat max n stunden aus kategorie c pro Woche
+# * Jede Klasse hat genau n stunden aus kategorie c pro Woche
 for clazz in classes:
     for category in categories:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
@@ -407,7 +412,24 @@ for day in days:
     # förderunterricht nur in der 1.-4. Stunde
     problem.addConstraint(lpSum(slot_used[(day, 5, 8)]) == 0)
 
-#* religion am ende des tages => muss
+# * religion am ende des tages => muss
+# 1. und 2. Stufe
+for day in days:
+    for clazz in classes[:-1]:
+        if clazz > 3:
+            continue
+        for slot in slots[:-1]:
+            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 5) <= 1 -
+                                  slot_used[(day, slot+1, clazz)])
+# 3. und 4. Stufe
+for day in days:
+    for clazz in classes[:-1]:
+        if clazz <= 3:
+            continue
+        for slot in slots[:-1]:
+            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 6) <= 1 -
+                                  slot_used[(day, slot+1, clazz)])
+
 
 ########################################################
 
@@ -490,7 +512,7 @@ for day in days:
 #############################################
 # TODO persönliche präferenzen
 # TODO schwimmen MUSS in doppelbesetzung
-# TODO sport und religion KEINE doppelbesetzung
+# TODO sport KEINE doppelbesetzung
 # TODO fixe schwimmzeiten
 # TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
 # TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
