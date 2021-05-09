@@ -359,6 +359,15 @@ for clazz in classes:
     problem.addConstraint(
         lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
 
+# TODO Die Klassenleitung hat mindestens 2 Stunden pro Tag in seiner Klasse
+for clazz in classes:
+    for day in days:
+        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                                for lesson in lessons
+                                for slot in slots
+                                for teacher in teacherCategoryCombinations[lesson]["teachers"]
+                                if teacher in classTeachers[clazz]) >= 2)
+
 # OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
 # genau drei mal ogs
 problem.addConstraint(lpSum(
