@@ -21,8 +21,13 @@ classes_cleartext = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "Fö"]
 classes = range(len(classes_cleartext))
 
 # Fächer
-categories_cleartext = ["Sonstiges", "Englisch", "Förder"]
+categories_cleartext = ["Sonstiges", "Englisch", "Förder",
+                        "Sport", "Schwimmen", "Religion", "Religion ††"]
 categories = range(len(categories_cleartext))
+
+category_shorttext = ["", " 'E'", " 'FÖ'",
+                      " 'Sp'", " 'Schw'", " 'Rel'", " 'Rel'"]
+
 
 # Lehrer
 teachers_cleartext = ["Wa", "Ka", "SB", "Si", "KE",
@@ -31,41 +36,29 @@ teachers = range(len(teachers_cleartext))
 remedial_teacher = 10
 
 teacherCategories = [
-    [0], [0], [0], [0],
-    [0], [0], [0], [0],
-    [0], [0], [0], [0, 1]
+    [0, 5], [0, 5], [0, 5], [0, 5],
+    [0, 5], [0, 5], [0, 5, 6], [0, 5],
+    [0, 5, 6], [0, 5], [0, 5], [0, 5, 1]
 ]
 teacherCategories[remedial_teacher].append(2)
 
-class_categories = {
-    (0, 0): 23,
-    (0, 1): 2,
-    (0, 2): 0,
-    (1, 0): 23,
-    (1, 1): 2,
-    (1, 2): 0,
-    (2, 0): 23,
-    (2, 1): 2,
-    (2, 2): 0,
-    (3, 0): 23,
-    (3, 1): 2,
-    (3, 2): 0,
-    (4, 0): 23,
-    (4, 1): 2,
-    (4, 2): 0,
-    (5, 0): 23,
-    (5, 1): 2,
-    (5, 2): 0,
-    (6, 0): 25,
-    (6, 1): 0,
-    (6, 2): 0,
-    (7, 0): 25,
-    (7, 1): 0,
-    (7, 2): 0,
-    (8, 0): 0,
-    (8, 1): 0,
-    (8, 2): 10
-}
+class_categories_raw = [
+    [23, 2, 0, 0, 0, 1, 0],
+    [23, 2, 0, 0, 0, 1, 0],
+    [23, 2, 0, 0, 0, 1, 0],
+    [23, 2, 0, 0, 0, 1, 0],
+    [23, 2, 0, 0, 0, 0, 1],
+    [23, 2, 0, 0, 0, 0, 1],
+    [23, 2, 0, 0, 0, 0, 1],
+    [23, 2, 0, 0, 0, 0, 1],
+    [0, 0, 10, 0, 0, 0, 0]
+]
+
+class_categories = {}
+for clazz in classes:
+    for category in categories:
+        class_categories[(clazz, category)
+                         ] = class_categories_raw[clazz][category]
 
 teacherLessons = [
     18, 14, 14, 28,
@@ -414,6 +407,7 @@ for day in days:
     # förderunterricht nur in der 1.-4. Stunde
     problem.addConstraint(lpSum(slot_used[(day, 5, 8)]) == 0)
 
+#* religion am ende des tages => muss
 
 ########################################################
 
@@ -432,14 +426,14 @@ problem.setObjective(
           ) - lpSum(p_school_end_deviation[(day, grade_level)]
                     for grade_level in n_grade_levels
                     for day in days)
-    + lpSum(x[(day, slot, clazz, lesson)]#* gewichtung doppelbesetzungen => vorallem 1./2.
+    + lpSum(x[(day, slot, clazz, lesson)]  # * gewichtung doppelbesetzungen => vorallem 1./2.
             for day in days
             for slot in slots
             for clazz in range(4)
             for lesson in lessons
             if len(teacherCategoryCombinations[lesson]["teachers"]) == 2
             ) * 100
-    + lpSum(x[(day, slot, clazz, lesson)]#* gewichtung doppelbesetzungen => vorallem 1./2.
+    + lpSum(x[(day, slot, clazz, lesson)]  # * gewichtung doppelbesetzungen => vorallem 1./2.
             for day in days
             for slot in slots
             for clazz in range(4, 8)
@@ -472,9 +466,8 @@ for day in days:
             for lesson in lessons:
                 if value(x[(day, slot, clazz, lesson)]) == 0:
                     continue
-                fach = {0: "", 1: " 'E'", 2: " 'FÖ'"}
                 slot_data.append(", ".join(list(map(
-                    lambda x: teachers_cleartext[x], teacherCategoryCombinations[lesson]["teachers"]))) + fach[
+                    lambda x: teachers_cleartext[x], teacherCategoryCombinations[lesson]["teachers"]))) + category_shorttext[
                     teacherCategoryCombinations[lesson]["category"]])
     day_data[day].append(["7."])
     teacher_ogs_data = ["8."]
@@ -496,7 +489,6 @@ for day in days:
         print("Gemeinsam Schluss am %s" % (days_cleartext[day]))
 #############################################
 # TODO persönliche präferenzen
-# TODO religion am ende des tages => muss
 # TODO schwimmen MUSS in doppelbesetzung
 # TODO sport und religion KEINE doppelbesetzung
 # TODO fixe schwimmzeiten
