@@ -235,13 +235,6 @@ teacher_day_ogs = {
     for day in days
 }
 
-# teacher_day_remedial_slot = {
-#     (teacher, day, slot): LpVariable("%s hat am %s in der %s Stunde Förderunterricht" % (teacher, day, slot), cat=LpBinary)
-#     for teacher in teachers
-#     for day in days
-#     for slot in slots
-# }
-
 #########################################################
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
