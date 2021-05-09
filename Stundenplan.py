@@ -421,16 +421,31 @@ for day in days:
 #################  OBJECTIVE  ##################
 
 # Maximize teacher hours in main class
-problem.setObjective(lpSum(x[(day, slot, clazz, lesson)]
-                           for day in days
-                           for slot in slots
-                           for clazz in classes
-                           for lesson in lessons
-                           for teacher in teacherCategoryCombinations[lesson]["teachers"]
-                           if teacher in classTeachers[clazz]
-                           )-lpSum(p_school_end_deviation[(day, grade_level)]
-                                   for grade_level in n_grade_levels
-                                   for day in days))
+problem.setObjective(
+    lpSum(x[(day, slot, clazz, lesson)]
+          for day in days
+          for slot in slots
+          for clazz in classes
+          for lesson in lessons
+          for teacher in teacherCategoryCombinations[lesson]["teachers"]
+          if teacher in classTeachers[clazz]
+          ) - lpSum(p_school_end_deviation[(day, grade_level)]
+                    for grade_level in n_grade_levels
+                    for day in days)
+    + lpSum(x[(day, slot, clazz, lesson)]#* gewichtung doppelbesetzungen => vorallem 1./2.
+            for day in days
+            for slot in slots
+            for clazz in range(4)
+            for lesson in lessons
+            if len(teacherCategoryCombinations[lesson]["teachers"]) == 2
+            ) * 100
+    + lpSum(x[(day, slot, clazz, lesson)]#* gewichtung doppelbesetzungen => vorallem 1./2.
+            for day in days
+            for slot in slots
+            for clazz in range(4, 8)
+            for lesson in lessons
+            if len(teacherCategoryCombinations[lesson]["teachers"]) == 2
+            ) * 1)
 
 ################################################
 # The problem is solved using PuLP's choice of Solver
@@ -480,7 +495,6 @@ for day in days:
     if sum(value(same_day_school_end[(day, school_end_slot)])for school_end_slot in school_end_slots) == 1:
         print("Gemeinsam Schluss am %s" % (days_cleartext[day]))
 #############################################
-# TODO gewichtung doppelbesetzungen => vorallem 1./2.
 # TODO persönliche präferenzen
 # TODO religion am ende des tages => muss
 # TODO schwimmen MUSS in doppelbesetzung
