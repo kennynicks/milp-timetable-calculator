@@ -17,41 +17,54 @@ slots_cleartext = ["1.", "2.", "3.", "4.", "5.", "6."]
 slots = range(len(slots_cleartext))
 
 # Klassen
-classes_cleartext = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b"]
+classes_cleartext = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "Fö"]
 classes = range(len(classes_cleartext))
 
 # Fächer
-categories_cleartext = ["Sonstiges", "Englisch"]
+categories_cleartext = ["Sonstiges", "Englisch", "Förder"]
 categories = range(len(categories_cleartext))
 
 # Lehrer
 teachers_cleartext = ["Wa", "Ka", "SB", "Si", "KE",
                       "Ba", "Ma", "Oc", "Gr", "Kl", "Ku", "Him"]
 teachers = range(len(teachers_cleartext))
+remedial_teacher = 10
 
 teacherCategories = [
     [0], [0], [0], [0],
     [0], [0], [0], [0],
     [0], [0], [0], [0, 1]
 ]
+teacherCategories[remedial_teacher].append(2)
 
 class_categories = {
     (0, 0): 23,
     (0, 1): 2,
+    (0, 2): 0,
     (1, 0): 23,
     (1, 1): 2,
+    (1, 2): 0,
     (2, 0): 23,
     (2, 1): 2,
+    (2, 2): 0,
     (3, 0): 23,
     (3, 1): 2,
+    (3, 2): 0,
     (4, 0): 23,
     (4, 1): 2,
+    (4, 2): 0,
     (5, 0): 23,
     (5, 1): 2,
+    (5, 2): 0,
     (6, 0): 25,
     (6, 1): 0,
+    (6, 2): 0,
     (7, 0): 25,
-    (7, 1): 0
+    (7, 1): 0,
+    (7, 2): 0,
+    (8, 0): 0,
+    (8, 1): 0,
+    (8, 2): 10
 }
 
 teacherLessons = [
@@ -68,7 +81,8 @@ classTeachers = {
     4: (5,),
     5: (6,),
     6: (7,),
-    7: (8,)
+    7: (8,),
+    8: (remedial_teacher,)
 }
 
 classTeacherNames = [", ".join(map(lambda x: teachers_cleartext[x],
@@ -81,6 +95,8 @@ for combination in teacherCombinations:
     categories = list(set(itertools.chain.from_iterable(
         [teacherCategories[teacher] for teacher in combination])))
     for category in categories:
+        if category == 2 and len(combination) == 2:
+            continue
         teacherCategoryCombinations.append({
             "teachers": combination,
             "category": category
@@ -219,12 +235,12 @@ teacher_day_ogs = {
     for day in days
 }
 
-teacher_day_remedial_slot = {
-    (teacher, day, slot): LpVariable("%s hat am %s in der %s Stunde Förderunterricht" % (teacher, day, slot), cat=LpBinary)
-    for teacher in teachers
-    for day in days
-    for slot in slots
-}
+# teacher_day_remedial_slot = {
+#     (teacher, day, slot): LpVariable("%s hat am %s in der %s Stunde Förderunterricht" % (teacher, day, slot), cat=LpBinary)
+#     for teacher in teachers
+#     for day in days
+#     for slot in slots
+# }
 
 #########################################################
 
@@ -233,7 +249,7 @@ problem = LpProblem("Stundenplan", sense=LpMaximize)
 
 ##################  CONSTRAINTS  ########################
 
-# Jede Klasse hat max n stunden aus kategorie c pro Woche
+# * Jede Klasse hat max n stunden aus kategorie c pro Woche
 for clazz in classes:
     for category in categories:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
@@ -243,13 +259,13 @@ for clazz in classes:
                                     if teacherCategoryCombinations[lesson]["category"] == category
                                     ) == class_categories[clazz, category])
 
-# Jede klasse hat im slot 0 jeden tages unterricht
+# * Jede klasse hat im slot 0 jeden tages unterricht
 for day in days:
-    for clazz in classes:
+    for clazz in classes[:-1]:
         problem.addConstraint(
             lpSum(x[(day, 0, clazz, lesson)] for lesson in lessons) == 1)
 
-# Jeder Lehrer darf an jedem Tag in jedem Slot nur eine Klasse unterrichten
+# * Jeder Lehrer darf an jedem Tag in jedem Slot nur eine Klasse unterrichten
 for teacher in teachers:
     for day in days:
         for slot in slots:
@@ -261,21 +277,21 @@ for teacher in teachers:
                 teacher_day_slot_combination[(teacher, day, combination)] * slot_combinations[combination][slot] for
                 combination in n_slot_combinations))
 
-# An jedem Tag hat jede Klasse maximal eine Stunde englisch
+# * An jedem Tag hat jede Klasse maximal eine Stunde englisch
 for day in days:
-    for clazz in classes:
+    for clazz in classes[:-1]:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                               for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 1) <= 1)
 
 
-# Für jeden Slot darf nur eine Combination ausgewählt sein
+# * Für jeden Slot darf nur eine Combination ausgewählt sein
 for day in days:
     for slot in slots:
         for clazz in classes:
             problem.addConstraint(
                 lpSum(x[(day, slot, clazz, lesson)] for lesson in lessons) == 1 * slot_used[(day, slot, clazz)])
 
-# Jeder Lehrer darf nur eine bestimmte Stundenzahl pro Woche unterrichten
+# * Jeder Lehrer darf nur eine bestimmte Stundenzahl pro Woche unterrichten
 for teacher in teachers:
     problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                                 for day in days
@@ -286,11 +302,9 @@ for teacher in teachers:
                                 )
                           + lpSum(teacher_day_ogs[(teacher, day)]
                                   for day in days)
-                          + lpSum(teacher_day_remedial_slot[(teacher, day, slot)]
-                                  for day in days
-                                  for slot in slots) == teacherLessons[teacher])
+                          == teacherLessons[teacher])
 
-# Alle Klassenstufen haben paarweise gleichzeitig schluss (1a+1b gleichzeitig!) => kann muss aber nicht
+# * Alle Klassenstufen haben paarweise gleichzeitig schluss (1a+1b gleichzeitig!) => kann muss aber nicht
 for grade_level in n_grade_levels:
     for day in days:
         for clazz in grade_levels[grade_level][:-1]:
@@ -301,14 +315,14 @@ for grade_level in n_grade_levels:
                 for lesson in lessons
                 for slot in slots)) == p_school_end_deviation[(day, grade_level)])
 
-# Keine FREISTUNDEN
+# * Keine FREISTUNDEN
 for day in days:
-    for clazz in classes:
+    for clazz in classes[:-1]:
         for slot in slots[:-1]:
             problem.addConstraint(
                 slot_used[(day, slot, clazz)] - slot_used[(day, slot + 1, clazz)] >= 0)
 
-# Alle Lehrer haben mindestens einmal die Woche gleichzeitig Schluss => muss (am besten Montags)
+# * Alle Lehrer haben mindestens einmal die Woche gleichzeitig Schluss => muss (am besten Montags)
 for teacher in teachers:
     for day in days:
         for school_end_slot in school_end_slots:
@@ -331,16 +345,16 @@ for day in days:
 #     0, school_end_slot)] for school_end_slot in school_end_slots ) >= 1)
 
 
-# TODO nicht zwingend aber höchst wünschenswert
-# keine SPRINGSTUNDEN
+# nicht zwingend aber höchst wünschenswert
+# * keine SPRINGSTUNDEN
 for teacher in teachers:
     for day in days:
         problem.addConstraint(lpSum(teacher_day_slot_combination[(
             teacher, day, slot_combination)] for slot_combination in n_slot_combinations) == 1)
 
-# Minimum 4h / Tag
+# * Minimum 4h / Tag
 for day in days:
-    for clazz in classes:
+    for clazz in classes[:-1]:
         problem.addConstraint(
             lpSum(slot_used[(day, slot, clazz)] for slot in slots) >= 4)
 
@@ -353,22 +367,22 @@ for clazz in classes:
                                     if teacher in teacherCategoryCombinations[lesson]["teachers"]
                                     ) <= 29 * class_teached_by[(clazz, teacher)])
 
-# TODO nicht zwingend aber höchst wünschenswert (möglichst nicht 1./2.)
-# Jede Klasse hat maximal drei Lehrkräfte
+# nicht zwingend aber höchst wünschenswert (möglichst nicht 1./2.)
+# * Jede Klasse hat maximal drei Lehrkräfte
 for clazz in classes:
     problem.addConstraint(
         lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
 
-# TODO Die Klassenleitung hat mindestens 2 Stunden pro Tag in seiner Klasse
+# * Die Klassenleitung hat mindestens 2 Stunden pro Tag in seiner Klasse
 for clazz in classes:
     for day in days:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                                for lesson in lessons
-                                for slot in slots
-                                for teacher in teacherCategoryCombinations[lesson]["teachers"]
-                                if teacher in classTeachers[clazz]) >= 2)
+                                    for lesson in lessons
+                                    for slot in slots
+                                    for teacher in teacherCategoryCombinations[lesson]["teachers"]
+                                    if teacher in classTeachers[clazz]) >= 2)
 
-# OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
+# * OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
 # genau drei mal ogs
 problem.addConstraint(lpSum(
     teacher_day_ogs[(teacher, day)] for teacher in teachers for day in days) == 3)
@@ -390,14 +404,17 @@ for teacher in teachers:
         problem.addConstraint(
             teacher_day_ogs[(teacher, day)] <= teacher_school_end[(teacher, day, 5)])
 
-# TODO förder: 2 stunden 4-5 mal die woche migrationskinder; möglichst alle klassen unterricht (muss aber nicht); Ein Lehrer
-# ein lehrer alle förder stunden
-# möglichst alle klassen
-# * Summe aller teacher == 1
-# doppelstunden
-# kein unterricht parallel
-# zählt nicht als Springstunde
-# zählt als unterricht
+# * förder: 2 stunden 4-5 mal die woche migrationskinder; möglichst alle klassen unterricht (muss aber nicht); Ein Lehrer
+for day in days:
+    # zwei stunden am tag förderunterricht
+    problem.addConstraint(
+        lpSum(slot_used[(day, slot, 8)] for slot in slots) == 2)
+    # förderunterricht nur in der 1.-4. Stunde
+    problem.addConstraint(lpSum(slot_used[(day, 4, 8)]) == 0)
+    # förderunterricht nur in der 1.-4. Stunde
+    problem.addConstraint(lpSum(slot_used[(day, 5, 8)]) == 0)
+
+
 ########################################################
 
 
@@ -440,7 +457,7 @@ for day in days:
             for lesson in lessons:
                 if value(x[(day, slot, clazz, lesson)]) == 0:
                     continue
-                fach = {0: "", 1: " 'E'"}
+                fach = {0: "", 1: " 'E'", 2: " 'FÖ'"}
                 slot_data.append(", ".join(list(map(
                     lambda x: teachers_cleartext[x], teacherCategoryCombinations[lesson]["teachers"]))) + fach[
                     teacherCategoryCombinations[lesson]["category"]])
