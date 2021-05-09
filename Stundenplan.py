@@ -219,6 +219,13 @@ teacher_day_ogs = {
     for day in days
 }
 
+teacher_day_remedial_slot = {
+    (teacher, day, slot): LpVariable("%s hat am %s in der %s Stunde Förderunterricht" % (teacher, day, slot), cat=LpBinary)
+    for teacher in teachers
+    for day in days
+    for slot in slots
+}
+
 #########################################################
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
@@ -276,15 +283,20 @@ for teacher in teachers:
                                 for clazz in classes
                                 for lesson in lessons
                                 if teacher in teacherCategoryCombinations[lesson]["teachers"]
-                                ) == teacherLessons[teacher])
+                                )
+                          + lpSum(teacher_day_ogs[(teacher, day)]
+                                  for day in days)
+                          + lpSum(teacher_day_remedial_slot[(teacher, day, slot)]
+                                  for day in days
+                                  for slot in slots) == teacherLessons[teacher])
 
 # Alle Klassenstufen haben paarweise gleichzeitig schluss (1a+1b gleichzeitig!) => kann muss aber nicht
 for grade_level in n_grade_levels:
     for day in days:
         for clazz in grade_levels[grade_level][:-1]:
             problem.addConstraint((lpSum(x[(day, slot, clazz, lesson)]
-                                          for lesson in lessons
-                                          for slot in slots)-lpSum(
+                                         for lesson in lessons
+                                         for slot in slots)-lpSum(
                 x[(day, slot, clazz+1, lesson)]
                 for lesson in lessons
                 for slot in slots)) == p_school_end_deviation[(day, grade_level)])
@@ -310,10 +322,13 @@ for day in days:
             teachers)-lpSum(teacher_school_end[(teacher, day, -1)]for teacher in teachers)))*-1 <= 13*(1-same_day_school_end[(day, school_end_slot)]))
 
 for day in days:
-    problem.addConstraint(lpSum(same_day_school_end[(day,school_end_slot)] for school_end_slot in school_end_slots)<=1)
+    problem.addConstraint(lpSum(same_day_school_end[(
+        day, school_end_slot)] for school_end_slot in school_end_slots) <= 1)
 
-problem.addConstraint(lpSum(same_day_school_end[(
-    day, school_end_slot)] for school_end_slot in school_end_slots for day in days) >= 1)
+# todo einkommentieren
+# montags
+# problem.addConstraint(lpSum(same_day_school_end[(
+#     0, school_end_slot)] for school_end_slot in school_end_slots ) >= 1)
 
 
 # TODO nicht zwingend aber höchst wünschenswert
@@ -348,7 +363,7 @@ for clazz in classes:
 # genau drei mal ogs
 problem.addConstraint(lpSum(
     teacher_day_ogs[(teacher, day)] for teacher in teachers for day in days) == 3)
-# jeder lehrer maximal ein mal ogs
+# jeder lehrer maximal einmal ogs
 for teacher in teachers:
     problem.addConstraint(
         lpSum(teacher_day_ogs[(teacher, day)] for day in days) <= 1)
@@ -357,10 +372,23 @@ for day in days:
     problem.addConstraint(
         lpSum(teacher_day_ogs[(teacher, day)] for teacher in teachers) <= 1)
 
+problem.addConstraint(lpSum(teacher_day_ogs[(
+    teacher, 0)] for teacher in teachers) == 0)  # montags keine ogs
+
+# im anschluss an die sechste klasse
 for teacher in teachers:
     for day in days:
         problem.addConstraint(
             teacher_day_ogs[(teacher, day)] <= teacher_school_end[(teacher, day, 5)])
+
+# TODO förder: 2 stunden 4-5 mal die woche migrationskinder; möglichst alle klassen unterricht (muss aber nicht); Ein Lehrer
+# ein lehrer alle förder stunden
+# möglichst alle klassen
+# * Summe aller teacher == 1
+# doppelstunden
+# kein unterricht parallel
+# zählt nicht als Springstunde
+# zählt als unterricht
 ########################################################
 
 
@@ -426,6 +454,7 @@ for day in days:
     if sum(value(same_day_school_end[(day, school_end_slot)])for school_end_slot in school_end_slots) == 1:
         print("Gemeinsam Schluss am %s" % (days_cleartext[day]))
 #############################################
+# TODO gewichtung doppelbesetzungen => vorallem 1./2.
 # TODO persönliche präferenzen
 # TODO religion am ende des tages => muss
 # TODO schwimmen MUSS in doppelbesetzung
@@ -433,7 +462,4 @@ for day in days:
 # TODO fixe schwimmzeiten
 # TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
 # TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
-# TODO gewichtung doppelbesetzungen => vorallem 1./2.
-# TODO förder: 2st jeder tag migrationskinder; möglichst alle klassen unterricht (muss aber nicht)
-# TODO [russ/türk: max 2 stufen. am besten 2; teilweise parallel zum unterricht]
 # TODO sport in der 3. und 4. muss Doppelstunde sein (1./2. ist egal)
