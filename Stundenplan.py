@@ -85,9 +85,9 @@ teacherCombinations = list(itertools.combinations(
     teachers, 1)) + list(itertools.combinations(teachers, 2))
 teacherCategoryCombinations = []
 for combination in teacherCombinations:
-    categories = list(set(itertools.chain.from_iterable(
+    _categories = list(set(itertools.chain.from_iterable(
         [teacherCategories[teacher] for teacher in combination])))
-    for category in categories:
+    for category in _categories:
         # förder nicht in doppelbesetzung
         if category == 2 and len(combination) == 2:
             continue
@@ -273,7 +273,6 @@ for day in days:
     for clazz in classes[:-1]:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                               for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 1) <= 1)
-
 
 # * Für jeden Slot darf nur eine Combination ausgewählt sein
 for day in days:
@@ -465,6 +464,7 @@ problem.solve(GUROBI_CMD())
 
 # The status of the solution is printed to the screen
 print("Status:", LpStatus[problem.status])
+
 day_data = {}
 for day in days:
     day_data[day] = []
@@ -498,10 +498,27 @@ for day in days:
     print(tabulate(day_data[day], headers=[
         "Stunde", *["%s - %s" % x for x in zip(classes_cleartext, classTeacherNames)]]))
 
+
+category_clazz_data = []
+
+for category in categories:
+    _categories = [categories_cleartext[category]]
+    for clazz in classes:
+        hours = sum(value(x[(day, slot, clazz, lesson)])
+                    for day in days for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == category)
+        _categories.append("%d" %
+                          (hours))
+    category_clazz_data.append(_categories)
+
+print()
+print(tabulate(category_clazz_data, headers=["Fach", *classes_cleartext]))
+
+
 print()
 for day in days:
     if sum(value(same_day_school_end[(day, school_end_slot)])for school_end_slot in school_end_slots) == 1:
         print("Gemeinsam Schluss am %s" % (days_cleartext[day]))
+
 #############################################
 # TODO persönliche präferenzen
 # TODO schwimmen MUSS in doppelbesetzung
