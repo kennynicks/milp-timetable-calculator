@@ -96,6 +96,12 @@ for combination in teacherCombinations:
         # * religion nicht in doppelbesetzung
         if category == 6 and len(combination) == 2:
             continue
+        # * schwimmen MUSS in doppelbesetzung
+        if category == 4 and len(combination) == 1:
+            continue
+        # # * sport KEINE doppelbesetzung
+        if category == 3 and len(combination) == 2:
+            continue
         teacherCategoryCombinations.append({
             "teachers": combination,
             "category": category
@@ -539,8 +545,6 @@ for day in days:
 
 #############################################
 # TODO persönliche präferenzen
-# TODO schwimmen MUSS in doppelbesetzung
-# TODO sport KEINE doppelbesetzung
 # TODO fixe schwimmzeiten
 # TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
 # TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
