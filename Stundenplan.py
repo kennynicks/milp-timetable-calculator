@@ -28,7 +28,6 @@ categories = range(len(categories_cleartext))
 category_shorttext = ["", " 'E'", " 'FÖ'",
                       " 'Sp'", " 'Schw'", " 'Rel'", " 'Rel'"]
 
-
 # Lehrer
 teachers_cleartext = ["Wa", "Ka", "SB", "Si", "KE",
                       "Ba", "Ma", "Oc", "Gr", "Kl", "Ku", "Him"]
@@ -331,8 +330,8 @@ for day in days:
 
 # todo einkommentieren
 # montags
-# problem.addConstraint(lpSum(same_day_school_end[(
-#     0, school_end_slot)] for school_end_slot in school_end_slots ) >= 1)
+problem.addConstraint(lpSum(same_day_school_end[(
+    0, school_end_slot)] for school_end_slot in school_end_slots) >= 1)
 
 
 # nicht zwingend aber höchst wünschenswert
@@ -358,10 +357,29 @@ for clazz in classes:
                                     ) <= 29 * class_teached_by[(clazz, teacher)])
 
 # nicht zwingend aber höchst wünschenswert (möglichst nicht 1./2.)
-# * Jede Klasse hat maximal drei Lehrkräfte
+# # * Jede Klasse hat maximal drei Lehrkräfte (frisst unnormal viel Zeit)
+for clazz in classes:
+    for teacher in classTeachers[clazz]:
+        problem.addConstraint(class_teached_by[(clazz, teacher)] == 1)
+    # for category in categories:
+    #     if class_categories[(clazz, category)] == 0:
+    #         continue
+    #     teachers_for_category = []
+    #     for teacher in teachers:
+    #         if not category in teacherCategories[teacher]:
+    #             continue
+    #         teachers_for_category.append(teacher)
+    #     # if len(teachers_for_category) == 1:
+    #     #     problem.addConstraint(
+    #     #         class_teached_by[(clazz, teachers_for_category[0])] == 1)
+    #     #     continue
+    #     problem.addConstraint(lpSum(class_teached_by[(clazz, _teacher)] for _teacher in teachers_for_category)>=1)
+
+
 for clazz in classes:
     problem.addConstraint(
         lpSum(class_teached_by[(clazz, teacher)] for teacher in teachers) <= 3)
+
 
 # * Die Klassenleitung hat mindestens 2 Stunden pro Tag in seiner Klasse
 for clazz in classes:
@@ -507,7 +525,7 @@ for category in categories:
         hours = sum(value(x[(day, slot, clazz, lesson)])
                     for day in days for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == category)
         _categories.append("%d" %
-                          (hours))
+                           (hours))
     category_clazz_data.append(_categories)
 
 print()
