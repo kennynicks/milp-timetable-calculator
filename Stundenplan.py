@@ -289,6 +289,17 @@ for day in days:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                               for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 1) <= 1)
 
+# * An jedem Tag hat jede Klasse maximal eine Stunde religion
+for day in days:
+    for clazz in classes[:-1]:
+        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                              for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 5) <= 1)
+
+for day in days:
+    for clazz in classes[:-1]:
+        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                              for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 6) <= 1)
+
 # * Für jeden Slot darf nur eine Combination ausgewählt sein
 for day in days:
     for slot in slots:
@@ -604,3 +615,4 @@ for day in days:
 # TODO persönliche präferenzen
 # TODO fixe schwimmzeiten muss Doppelstunde sein (selber lehrer)
 # TODO sport in der 3. und 4. muss Doppelstunde sein (1./2. ist egal) (selber lehrer)
+# TODO sport entweder doppelstunde oder einzel (1.2. klasse)
