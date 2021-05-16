@@ -33,6 +33,7 @@ teachers_cleartext = ["Wa", "Ka", "SB", "Si", "KE",
 teachers = range(len(teachers_cleartext))
 remedial_teacher = 10
 conference_day = 0
+conference_slot = 6
 
 #! fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
 teacherCategories = [
@@ -338,12 +339,13 @@ for day in days:
     problem.addConstraint(lpSum(same_day_school_end[(
         day, school_end_slot)] for school_end_slot in school_end_slots) <= 1)
 
-problem.addConstraint(lpSum(same_day_school_end[(
-    conference_day, school_end_slot)] for school_end_slot in school_end_slots) == 1)
-    
+# * am Konferenztag hat niemand frei
 problem.addConstraint(lpSum(teacher_school_end[(
-    teacher, conference_day, -1)] for teacher in teachers) == 0)  # * am Konferenztag hat niemand frei
+    teacher, conference_day, -1)] for teacher in teachers) == 0)
 
+# * 5 Stunden vor der Konferenz
+problem.addConstraint(same_day_school_end[(
+    conference_day, conference_slot-1)]) == 1)
 
 # nicht zwingend aber höchst wünschenswert
 # * keine SPRINGSTUNDEN
@@ -551,5 +553,4 @@ for day in days:
 # TODO persönliche präferenzen
 # TODO fixe schwimmzeiten muss Doppelstunde sein (selber lehrer)
 # TODO sport in der 3. und 4. muss Doppelstunde sein (1./2. ist egal) (selber lehrer)
-# TODO 5 Stunden vor der Konferenz
 # TODO Freitags 5 Stunden
