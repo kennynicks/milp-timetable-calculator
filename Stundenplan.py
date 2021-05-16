@@ -5,7 +5,6 @@ from pulp import *
 from tabulate import tabulate
 import itertools
 
-
 ################## INPUT DATA ##################
 
 # Tage
@@ -22,35 +21,37 @@ classes = range(len(classes_cleartext))
 
 # Fächer
 categories_cleartext = ["Sonstiges", "Englisch", "Förder",
-                        "Sport", "Schwimmen", "Religion", "Religion ††"]
+                        "Sport", "Schwimmen", "Religion", "Religion ††", "Sport +"]
 categories = range(len(categories_cleartext))
 
 category_shorttext = ["", " 'E'", " 'FÖ'",
-                      " 'Sp'", " 'Schw'", " 'Rel'", " 'Rel'"]
+                      " 'Sp'", " 'Schw'", " 'Rel'", " 'Rel'", " 'Sp'"]
 
 # Lehrer
 teachers_cleartext = ["Wa", "Ka", "SB", "Si", "KE",
                       "Ba", "Ma", "Oc", "Gr", "Kl", "Ku", "Him"]
 teachers = range(len(teachers_cleartext))
 remedial_teacher = 10
+conference_day = 0
 
+#! fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
 teacherCategories = [
-    [0, 5], [0, 5], [0, 5], [0, 5],
-    [0, 5], [0, 5], [0, 5, 6], [0, 5],
-    [0, 5, 6], [0, 5], [0, 5], [0, 5, 1]
+    [0, 5, 3, 7], [0, 5, 3, 7], [0, 5, 3, 7], [0, 5, 3, 7],
+    [0, 5, 3, 7], [0, 5, 3, 7], [0, 5, 6, 3, 7], [0, 5, 3, 7],
+    [0, 5, 6, 3, 7], [0, 5, 3, 7], [0, 5, 3, 7], [0, 5, 1, 3, 7]
 ]
 teacherCategories[remedial_teacher].append(2)
 
 class_categories_raw = [
-    [23, 2, 0, 0, 0, 1, 0],
-    [23, 2, 0, 0, 0, 1, 0],
-    [23, 2, 0, 0, 0, 1, 0],
-    [23, 2, 0, 0, 0, 1, 0],
-    [22, 2, 0, 0, 0, 0, 1],
-    [22, 2, 0, 0, 0, 0, 1],
-    [22, 2, 0, 0, 0, 0, 1],
-    [22, 2, 0, 0, 0, 0, 1],
-    [0, 0, 10, 0, 0, 0, 0]
+    [21, 2, 0, 2, 0, 1, 0, 0],
+    [21, 2, 0, 2, 0, 1, 0, 0],
+    [21, 2, 0, 2, 0, 1, 0, 0],
+    [21, 2, 0, 2, 0, 1, 0, 0],
+    [20, 2, 0, 0, 0, 0, 1, 2],
+    [20, 2, 0, 0, 0, 0, 1, 2],
+    [20, 2, 0, 0, 0, 0, 1, 2],
+    [20, 2, 0, 0, 0, 0, 1, 2],
+    [0, 0, 10, 0, 0, 0, 0, 0]
 ]
 
 class_categories = {}
@@ -99,8 +100,11 @@ for combination in teacherCombinations:
         # * schwimmen MUSS in doppelbesetzung
         if category == 4 and len(combination) == 1:
             continue
-        # # * sport KEINE doppelbesetzung
+        # * sport KEINE doppelbesetzung
         if category == 3 and len(combination) == 2:
+            continue
+        # * sport KEINE doppelbesetzung
+        if category == 7 and len(combination) == 2:
             continue
         teacherCategoryCombinations.append({
             "teachers": combination,
@@ -334,10 +338,11 @@ for day in days:
     problem.addConstraint(lpSum(same_day_school_end[(
         day, school_end_slot)] for school_end_slot in school_end_slots) <= 1)
 
-# todo einkommentieren
-# montags
 problem.addConstraint(lpSum(same_day_school_end[(
-    0, school_end_slot)] for school_end_slot in school_end_slots) >= 1)
+    conference_day, school_end_slot)] for school_end_slot in school_end_slots) == 1)
+    
+problem.addConstraint(lpSum(teacher_school_end[(
+    teacher, conference_day, -1)] for teacher in teachers) == 0)  # * am Konferenztag hat niemand frei
 
 
 # nicht zwingend aber höchst wünschenswert
@@ -478,7 +483,6 @@ problem.setObjective(
             for lesson in lessons
             if len(teacherCategoryCombinations[lesson]["teachers"]) == 2
             ) * 1)
-
 ################################################
 # The problem is solved using PuLP's choice of Solver
 print("Constraints: %s" % (len(problem.constraints)))
@@ -545,7 +549,7 @@ for day in days:
 
 #############################################
 # TODO persönliche präferenzen
-# TODO fixe schwimmzeiten
-# TODO teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
-# TODO fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
-# TODO sport in der 3. und 4. muss Doppelstunde sein (1./2. ist egal)
+# TODO fixe schwimmzeiten muss Doppelstunde sein (selber lehrer)
+# TODO sport in der 3. und 4. muss Doppelstunde sein (1./2. ist egal) (selber lehrer)
+# TODO 5 Stunden vor der Konferenz
+# TODO Freitags 5 Stunden
