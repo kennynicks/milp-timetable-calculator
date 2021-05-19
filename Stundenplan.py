@@ -126,6 +126,15 @@ for combination in teacherCombinations:
 # TODO teacherLessons if teacher in teacherCategoryCombinations[lesson]["teachers"]
 lessons = range(len(teacherCategoryCombinations))
 
+categoryLessons = {}
+
+for category in categories:
+    _lessons = []
+    for lesson in lessons:
+        if teacherCategoryCombinations[lesson]["category"] == category:
+            _lessons.append(lesson)
+    categoryLessons[category] = _lessons
+
 slot_combinations = {
     0: [0, 0, 0, 0, 0, 0],
     1: [1, 0, 0, 0, 0, 0],
@@ -278,8 +287,7 @@ for clazz in classes:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                                     for day in days
                                     for slot in slots
-                                    for lesson in lessons
-                                    if teacherCategoryCombinations[lesson]["category"] == category
+                                    for lesson in categoryLessons[category]
                                     ) == class_categories[clazz, category])
 
 for teacher in teachers:
@@ -308,23 +316,22 @@ for teacher in teachers:
                                         ) == lpSum(
                 teacher_day_slot_combination[(teacher, day, combination)] * slot_combinations[combination][slot] for
                 combination in n_slot_combinations))
-
 # * An jedem Tag hat jede Klasse maximal eine Stunde englisch
 for day in days:
     for clazz in classes[:-1]:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                              for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 1) <= 1)
+                              for slot in slots for lesson in categoryLessons[1]) <= 1)
 
 # * An jedem Tag hat jede Klasse maximal eine Stunde religion
 for day in days:
     for clazz in classes[:-1]:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                              for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 5) <= 1)
+                              for slot in slots for lesson in categoryLessons[5]) <= 1)
 
 for day in days:
     for clazz in classes[:-1]:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                              for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 6) <= 1)
+                              for slot in slots for lesson in categoryLessons[6]) <= 1)
 
 # * Für jeden Slot darf nur eine Combination ausgewählt sein
 for day in days:
@@ -487,7 +494,7 @@ for day in days:
         if clazz > 3:
             continue
         for slot in slots[:-1]:
-            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 5) <= 1 -
+            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in categoryLessons[5]) <= 1 -
                                   slot_used[(day, slot+1, clazz)])
 # 3. und 4. Stufe
 for day in days:
@@ -495,7 +502,7 @@ for day in days:
         if clazz <= 3:
             continue
         for slot in slots[:-1]:
-            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 6) <= 1 -
+            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in categoryLessons[6]) <= 1 -
                                   slot_used[(day, slot+1, clazz)])
 
 # * teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
@@ -510,43 +517,35 @@ for clazz in classes[:-1]:
         for slot in slots:
             if day in sport_slots and slot in sport_slots[day]:
                 continue
-            for lesson in lessons:
-                if teacherCategoryCombinations[lesson]["category"] == 7:
-                    problem.addConstraint(x[(day, slot, clazz, lesson)] == 0)
+            for lesson in categoryLessons[7]:
+                problem.addConstraint(x[(day, slot, clazz, lesson)] == 0)
 
 for sport_day in sport_slots:
     for sport_slot in sport_slots[sport_day]:
         problem.addConstraint(lpSum(x[(sport_day, sport_slot, clazz, lesson)]  # 2 klassen gleichzeitig sport
                               for clazz in classes[:-1]
-                              for lesson in lessons
-                              if teacherCategoryCombinations[lesson]["category"] == 7) == 2)
+                              for lesson in categoryLessons[7]) == 2)
         problem.addConstraint(lpSum(x[(sport_day, sport_slot, 4, lesson)]  # dritte stufe hat gleichzeitig sport
-                                    for lesson in lessons
-                                    if teacherCategoryCombinations[lesson]["category"] == 7) == lpSum(
+                                    for lesson in categoryLessons[7]) == lpSum(
             x[(sport_day, sport_slot, 5, lesson)]
-            for lesson in lessons
-            if teacherCategoryCombinations[lesson]["category"] == 7))
+            for lesson in categoryLessons[7]))
         problem.addConstraint(lpSum(x[(sport_day, sport_slot, 6, lesson)]  # vierte stufe hat gleichzeitig sport
-                                    for lesson in lessons
-                                    if teacherCategoryCombinations[lesson]["category"] == 7) == lpSum(
+                                    for lesson in categoryLessons[7]) == lpSum(
             x[(sport_day, sport_slot, 7, lesson)]
-            for lesson in lessons
-            if teacherCategoryCombinations[lesson]["category"] == 7))
+            for lesson in categoryLessons[7]))
     # problem.addConstraint(lpSum(x[(sport_day, sport_slots[sport_day][0], 4, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"]==7) == lpSum(x[(sport_day, sport_slots[sport_day][1], 4, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"]==7))
     # problem.addConstraint(lpSum(x[(sport_day, sport_slots[sport_day][0], 6, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"]==7) == lpSum(x[(sport_day, sport_slots[sport_day][1], 6, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"]==7))
-    for lesson in lessons:  # gleicher lehrer in doppelstunde
-        if teacherCategoryCombinations[lesson]["category"] == 7:
-            for clazz in classes[4:-1]:
-                problem.addConstraint(x[(sport_day, sport_slots[sport_day][0], clazz, lesson)] == x[(
-                    sport_day, sport_slots[sport_day][1], clazz, lesson)])
+    for lesson in categoryLessons[7]:  # gleicher lehrer in doppelstunde
+        for clazz in classes[4:-1]:
+            problem.addConstraint(x[(sport_day, sport_slots[sport_day][0], clazz, lesson)] == x[(
+                sport_day, sport_slots[sport_day][1], clazz, lesson)])
 
 # * fixe schwimmzeiten muss Doppelstunde sein (selber lehrer)
 for swim_day in swim_slots:
     for swim_slot in swim_slots[swim_day]:
         problem.addConstraint(lpSum(x[(swim_day, swim_slot, clazz, lesson)]  # 2 klassen gleichzeitig sport
                               for clazz in classes[:-1]
-                              for lesson in lessons
-                              if teacherCategoryCombinations[lesson]["category"] == 4) == 1)
+                              for lesson in categoryLessons[4]) == 1)
 
 for clazz in classes[:-1]:
     if class_categories_raw[clazz][4] == 0:
@@ -555,18 +554,16 @@ for clazz in classes[:-1]:
         for slot in slots:
             if day in swim_slots and slot in swim_slots[day]:
                 continue
-            for lesson in lessons:
-                if teacherCategoryCombinations[lesson]["category"] == 4:
-                    problem.addConstraint(x[(day, slot, clazz, lesson)] == 0)
+            for lesson in categoryLessons[4]:
+                problem.addConstraint(x[(day, slot, clazz, lesson)] == 0)
 
 for swim_day in swim_slots:
-    for lesson in lessons:  # gleicher lehrer in doppelstunde
-        if teacherCategoryCombinations[lesson]["category"] == 4:
-            for clazz in classes[:-1]:
-                if class_categories_raw[clazz][4] == 0:
-                    continue
-                problem.addConstraint(x[(swim_day, swim_slots[swim_day][0], clazz, lesson)] == x[(
-                    swim_day, swim_slots[swim_day][1], clazz, lesson)])
+    for lesson in categoryLessons[4]:  # gleicher lehrer in doppelstunde
+        for clazz in classes[:-1]:
+            if class_categories_raw[clazz][4] == 0:
+                continue
+            problem.addConstraint(x[(swim_day, swim_slots[swim_day][0], clazz, lesson)] == x[(
+                swim_day, swim_slots[swim_day][1], clazz, lesson)])
 
 # * sport entweder doppelstunde oder einzel (1./2. klasse)
 
@@ -583,13 +580,13 @@ for clazz in classes[:4]:
 for clazz in classes[:4]:
     for day in days:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                              for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 3) <= 2)
+                              for slot in slots for lesson in categoryLessons[3]) <= 2)
 
 # * sport in der 1. und 2. Klasse nicht gleichzeitig in mehreren Klassen möglich
 for day in days:
     for slot in slots:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for clazz in classes[:4]
-                              for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 3) <= 1)
+                              for lesson in categoryLessons[3]) <= 1)
 
 # Nicht mehrere einzelstunden sport verteilt über den Tag
 for clazz in classes[:4]:
@@ -597,21 +594,17 @@ for clazz in classes[:4]:
         for slot in [0, 2]:
             problem.addConstraint(
                 (1 - lpSum(x[(day, slot, clazz, lesson)]
-                 for lesson in lessons
-                           if teacherCategoryCombinations[lesson]["category"] == 3)) * 20 >= lpSum(x[(day, slot_follow, clazz, lesson)]
+                 for lesson in categoryLessons[3])) * 20 >= lpSum(x[(day, slot_follow, clazz, lesson)]
                                                                                                    for slot_follow in slots[slot+2:]
-                                                                                                   for lesson in lessons
-                                                                                                   if teacherCategoryCombinations[lesson]["category"] == 3)
+                                                                                                   for lesson in categoryLessons[3])
             )
         for slot in [1, 3]:
             problem.addConstraint(
                 (1 - lpSum(x[(day, slot, clazz, lesson)]
-                 for lesson in lessons
-                           if teacherCategoryCombinations[lesson]["category"] == 3)) * 20 >= lpSum(
+                 for lesson in categoryLessons[3])) * 20 >= lpSum(
                     x[(day, slot_follow, clazz, lesson)]
                     for slot_follow in slots[slot+1:]
-                    for lesson in lessons
-                    if teacherCategoryCombinations[lesson]["category"] == 3)
+                    for lesson in categoryLessons[3])
             )
 
 #
@@ -721,4 +714,3 @@ for day in days:
 
 #############################################
 # TODO persönliche präferenzen
-# TODO lesson in lessons if xyz => in liste extrahieren
