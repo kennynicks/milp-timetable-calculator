@@ -548,6 +548,32 @@ for swim_day in swim_slots:
                 problem.addConstraint(x[(swim_day, swim_slots[swim_day][0], clazz, lesson)] == x[(
                     swim_day, swim_slots[swim_day][1], clazz, lesson)])
 
+# * sport entweder doppelstunde oder einzel (1./2. klasse)
+
+
+# maximal einen sport-lehrer pro tag
+for clazz in classes[:4]:
+    for day in days:
+        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                                    for slot in slots
+                                    for lesson in lessons
+                                    for teacher in teachers
+                                    if teacher in teacherCategoryCombinations[lesson]["teachers"]
+                                     and teacherCategoryCombinations[lesson]["category"] == 3) <= 1)
+
+
+# * maximal zwei stunden sport pro tag pro klasse
+for clazz in classes[:4]:
+    for day in days:
+        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                              for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 3) <= 2)
+
+# * sport in der 1. und 2. Klasse nicht gleichzeitig in mehreren Klassen möglich
+for day in days:
+    for slot in slots:
+        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for clazz in classes[:4]
+                              for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == 4) <= 1)
+
 ########################################################
 
 
@@ -645,4 +671,3 @@ for day in days:
 
 #############################################
 # TODO persönliche präferenzen
-# TODO sport entweder doppelstunde oder einzel (1.2. klasse)
