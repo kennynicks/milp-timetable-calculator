@@ -55,10 +55,10 @@ swim_slots = {
 }
 
 class_categories_raw = [
-    [19, 2, 0, 4, 0, 1, 0, 0],
-    [19, 2, 0, 4, 0, 1, 0, 0],
-    [17, 2, 0, 4, 2, 1, 0, 0],
-    [17, 2, 0, 4, 2, 1, 0, 0],
+    [17, 2, 0, 6, 0, 1, 0, 0],
+    [17, 2, 0, 6, 0, 1, 0, 0],
+    [15, 2, 0, 6, 2, 1, 0, 0],
+    [15, 2, 0, 6, 2, 1, 0, 0],
     [20, 2, 0, 0, 0, 0, 1, 2],
     [18, 2, 0, 0, 2, 0, 1, 2],
     [20, 2, 0, 0, 0, 0, 1, 2],
@@ -281,14 +281,14 @@ for clazz in classes:
                                     for lesson in lessons
                                     if teacherCategoryCombinations[lesson]["category"] == category
                                     ) == class_categories[clazz, category])
-for lesson in lessons:
-    if teacherCategoryCombinations[lesson]["category"] != 3:
-        continue
+
+for teacher in teachers:
     for day in days:
-        for slot in slots:
-            for clazz in classes[:4]:
-                problem.addConstraint(x[(day, slot, clazz, lesson)] == sport_teached_by[(
-                    day, clazz, teacherCategoryCombinations[lesson]["teachers"][0])])
+        for clazz in classes[:4]:
+            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                                        for slot in slots
+                                        for lesson in lessons
+                                        if teacher in teacherCategoryCombinations[lesson]["teachers"] and teacherCategoryCombinations[lesson]["category"] == 3) <= 20*sport_teached_by[(day, clazz, teacher)])
 
 
 # * Jede klasse hat im slot 0 jeden tages unterricht
@@ -571,12 +571,12 @@ for swim_day in swim_slots:
 # * sport entweder doppelstunde oder einzel (1./2. klasse)
 
 
-# maximal einen sport-lehrer pro tag
-# for clazz in classes[:4]:
-#     for day in days:
-#         problem.addConstraint(
-#             lpSum(sport_teached_by[(day, clazz, teacher)]
-#              for teacher in teachers) <= 1)
+# * maximal einen sport-lehrer pro tag
+for clazz in classes[:4]:
+    for day in days:
+        problem.addConstraint(
+            lpSum(sport_teached_by[(day, clazz, teacher)]
+                  for teacher in teachers) <= 1)
 
 
 # * maximal zwei stunden sport pro tag pro klasse
