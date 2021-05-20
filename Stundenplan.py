@@ -607,7 +607,7 @@ for day in days:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for clazz in classes[:4]
                               for lesson in categoryLessons[3]) <= 1)
 
-#* Nicht mehrere einzelstunden sport verteilt über den Tag
+# * Nicht mehrere einzelstunden sport verteilt über den Tag
 for clazz in classes[:4]:
     for day in days:
         for slot in [0, 2]:
@@ -626,6 +626,13 @@ for clazz in classes[:4]:
                     for lesson in categoryLessons[3])
             )
 
+# * sport und schwimmen (1./2. Stufe) nicht an einem tag
+for clazz in classes[:4]:
+    for day in days:
+        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                                    for slot in slots
+                                    for lesson in lessons
+                                    if teacherCategoryCombinations[lesson]["category"] in [3, 4]) <= 2)
 ########################################################
 
 
@@ -725,4 +732,3 @@ for day in days:
 
 #############################################
 # TODO persönliche präferenzen
-# TODO sport und schwimmen (1./2. Stufe) nicht an einem tag
