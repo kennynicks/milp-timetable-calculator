@@ -412,6 +412,15 @@ problem.addConstraint(same_day_school_end[(
 # * Freitags 5 Stunden
 problem.addConstraint(same_day_school_end[(4, 4)] == 1)
 
+# * am konferenztag haben möglichst alle die letzten beiden Stunden unterricht
+for teacher in teachers:
+    problem.addConstraint(lpSum(x[(conference_day, slot, clazz, lesson)]
+                                for clazz in classes
+                                for slot in slots
+                                for lesson in lessons
+                                if teacher in teacherCategoryCombinations[lesson]["teachers"]
+                                ) >= 2)
+
 # nicht zwingend aber höchst wünschenswert
 # * keine SPRINGSTUNDEN
 for teacher in teachers:
@@ -447,17 +456,18 @@ for clazz in classes:
 
 teacherCategoryCount = {}
 for category in categories:
-    teacherCategoryCount[category] = [0,[]]
+    teacherCategoryCount[category] = [0, []]
     for teacher in teachers:
         if category in teacherCategories[teacher]:
             teacherCategoryCount[category][0] += 1
             teacherCategoryCount[category][1].append(teacher)
 
-#todo test
+# todo test
 for category in categories:
     for clazz in classes:
-        if class_categories[clazz,category] > 0 and teacherCategoryCount[category][0] == 1:
-            problem.addConstraint(class_teached_by[(clazz,teacherCategoryCount[category][1][0])]==1)
+        if class_categories[clazz, category] > 0 and teacherCategoryCount[category][0] == 1:
+            problem.addConstraint(
+                class_teached_by[(clazz, teacherCategoryCount[category][1][0])] == 1)
 
 
 for clazz in classes:
