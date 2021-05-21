@@ -20,11 +20,11 @@ classes_cleartext = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "Fö"]
 classes = range(len(classes_cleartext))
 
 # Fächer
-categories_cleartext = ["Sonstiges", "Englisch", "Förder", "Schwimmen", "Religion", "Religion ††", "Sport +"]
+categories_cleartext = ["Sonstiges", "Englisch",
+                        "Förder", "Schwimmen", "Religion", "Sport"]
 categories = range(len(categories_cleartext))
 
-category_shorttext = ["", " 'E'", " 'FÖ'",
-                      " 'Sp'", " 'Schw'", " 'Rel'", " 'Rel'", " 'Sp'"]
+category_shorttext = ["", " 'E'", " 'FÖ'", " 'Schw'", " 'Rel'", " 'Sp'"]
 
 # Lehrer
 teachers_cleartext = [
@@ -50,20 +50,20 @@ conference_slot = 5
 
 #! fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
 teacherCategories = [
-    [0, 6, 4, 3, 1],
-    [0, 6, 4, 5],
-    [0, 6, 4, 3],
-    [0, 6, 4, 1],
-    [0, 6, 4, 1],
-    [0, 6, 4],
-    [0, 6, 4, 3],
-    [0, 6, 4, 3, 5],
-    [0, 6, 4, 1],
-    [0, 6, 4],
-    [0, 6, 4],
-    [0, 6, 4, 1],
-    [0, 6, 4, 3],
-    [0, 6, 4],
+    [0, 5, 3, 1],
+    [0, 5, 4],
+    [0, 5, 3],
+    [0, 5, 1],
+    [0, 5, 1],
+    [0, 5],
+    [0, 5, 3],
+    [0, 5, 3, 4],
+    [0, 5, 1],
+    [0, 5],
+    [0, 5],
+    [0, 5, 1],
+    [0, 5, 3],
+    [0, 5],
 ]
 
 teacherCategories[remedial_teacher].append(2)
@@ -80,15 +80,15 @@ swim_slots = {
 }
 
 class_categories_raw = [
-    [22, 2, 0, 0, 0, 0, 0],
-    [22, 2, 0, 0, 0, 0, 0],
-    [23, 2, 0, 2, 0, 0, 0],
-    [23, 2, 0, 2, 0, 0, 0],
-    [22, 2, 0, 0, 0, 1, 2],
-    [20, 2, 0, 2, 0, 1, 2],
-    [22, 2, 0, 0, 0, 1, 2],  # 3
-    [22, 2, 0, 0, 0, 1, 2],  # 3
-    [0, 0, 10, 0, 0, 0, 0]
+    [22, 2, 0, 0, 0, 0],
+    [22, 2, 0, 0, 0, 0],
+    [23, 2, 0, 2, 0, 0],
+    [23, 2, 0, 2, 0, 0],
+    [22, 2, 0, 0, 1, 2],
+    [20, 2, 0, 2, 1, 2],
+    [22, 2, 0, 0, 1, 2],  # 3
+    [22, 2, 0, 0, 1, 2],  # 3
+    [0, 0, 10, 0, 0, 0]
 ]
 
 class_categories = {}
@@ -130,13 +130,13 @@ for combination in teacherCombinations:
         if category == 2 and len(combination) == 2:
             continue
         # * religion nicht in doppelbesetzung
-        if category == 5 and len(combination) == 2:
+        if category == 4 and len(combination) == 2:
             continue
         # * schwimmen MUSS in doppelbesetzung
         if category == 3 and len(combination) == 1:
             continue
         # * sport KEINE doppelbesetzung
-        if category == 6 and len(combination) == 2:
+        if category == 5 and len(combination) == 2:
             continue
         teacherCategoryCombinations.append({
             "teachers": combination,
@@ -332,6 +332,7 @@ for teacher in teachers:
                                         ) == lpSum(
                 teacher_day_slot_combination[(teacher, day, combination)] * slot_combinations[combination][slot] for
                 combination in n_slot_combinations))
+
 # * An jedem Tag hat jede Klasse maximal eine Stunde englisch
 for day in days:
     for clazz in classes[:-1]:
@@ -343,11 +344,6 @@ for day in days:
     for clazz in classes[:-1]:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                               for slot in slots for lesson in categoryLessons[4]) <= 1)
-
-for day in days:
-    for clazz in classes[:-1]:
-        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                              for slot in slots for lesson in categoryLessons[5]) <= 1)
 
 # * Für jeden Slot darf nur eine Combination ausgewählt sein
 for day in days:
@@ -520,11 +516,12 @@ for day in days:
     # förderunterricht nur in der 1.-4. Stunde
     problem.addConstraint(lpSum(slot_used[(day, 5, 8)]) == 0)
 
+# * religion in der letzten stunde
 # 3. und 4. Stufe
 for day in days:
     for clazz in classes[4:-1]:
         for slot in slots[:-1]:
-            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in categoryLessons[5]) <= 1 -
+            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in categoryLessons[4]) <= 1 -
                                   slot_used[(day, slot+1, clazz)])
 
 # * teils fixe sportzeiten (mehrere Klassen gleichzeitig => zwei hallen 3./4.)
@@ -533,29 +530,29 @@ for day in days:
 # doppelstunde
 
 for clazz in classes[:-1]:
-    if class_categories_raw[clazz][6] == 0:
+    if class_categories_raw[clazz][5] == 0:
         continue
     for day in days:
         for slot in slots:
             if day in sport_slots and slot in sport_slots[day]:
                 continue
-            for lesson in categoryLessons[6]:
+            for lesson in categoryLessons[5]:
                 problem.addConstraint(x[(day, slot, clazz, lesson)] == 0)
 
 for sport_day in sport_slots:
     for sport_slot in sport_slots[sport_day]:
         problem.addConstraint(lpSum(x[(sport_day, sport_slot, clazz, lesson)]  # 2 klassen gleichzeitig sport
                               for clazz in classes[:-1]
-                              for lesson in categoryLessons[6]) == 2)
+                              for lesson in categoryLessons[5]) == 2)
         problem.addConstraint(lpSum(x[(sport_day, sport_slot, 4, lesson)]  # dritte stufe hat gleichzeitig sport
-                                    for lesson in categoryLessons[6]) == lpSum(
+                                    for lesson in categoryLessons[5]) == lpSum(
             x[(sport_day, sport_slot, 5, lesson)]
-            for lesson in categoryLessons[6]))
+            for lesson in categoryLessons[5]))
         problem.addConstraint(lpSum(x[(sport_day, sport_slot, 6, lesson)]  # vierte stufe hat gleichzeitig sport
-                                    for lesson in categoryLessons[6]) == lpSum(
+                                    for lesson in categoryLessons[5]) == lpSum(
             x[(sport_day, sport_slot, 7, lesson)]
-            for lesson in categoryLessons[6]))
-    for lesson in categoryLessons[6]:  # gleicher lehrer in doppelstunde
+            for lesson in categoryLessons[5]))
+    for lesson in categoryLessons[5]:  # gleicher lehrer in doppelstunde
         for clazz in classes[4:-1]:
             problem.addConstraint(x[(sport_day, sport_slots[sport_day][0], clazz, lesson)] == x[(
                 sport_day, sport_slots[sport_day][1], clazz, lesson)])
@@ -563,7 +560,7 @@ for sport_day in sport_slots:
 # * fixe schwimmzeiten muss Doppelstunde sein (selber lehrer)
 for swim_day in swim_slots:
     for swim_slot in swim_slots[swim_day]:
-        problem.addConstraint(lpSum(x[(swim_day, swim_slot, clazz, lesson)]  # 2 klassen gleichzeitig sport
+        problem.addConstraint(lpSum(x[(swim_day, swim_slot, clazz, lesson)]  # 2 klassen gleichzeitig schwimmen
                               for clazz in classes[:-1]
                               for lesson in categoryLessons[3]) == 1)
 
