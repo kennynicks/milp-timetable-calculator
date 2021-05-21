@@ -81,10 +81,10 @@ swim_slots = {
 }
 
 class_categories_raw = [
-    [18, 2, 0, 3, 0, 1, 0, 0],
-    [18, 2, 0, 3, 0, 1, 0, 0],
-    [20, 2, 0, 2, 2, 1, 0, 0],
-    [20, 2, 0, 2, 2, 1, 0, 0],
+    [22, 2, 0, 0, 0, 0, 0, 0],
+    [22, 2, 0, 0, 0, 0, 0, 0],
+    [23, 2, 0, 0, 2, 0, 0, 0],
+    [23, 2, 0, 0, 2, 0, 0, 0],
     [22, 2, 0, 0, 0, 0, 1, 2],
     [20, 2, 0, 0, 2, 0, 1, 2],
     [22, 2, 0, 0, 0, 0, 1, 2],  # 3
@@ -130,18 +130,18 @@ for combination in teacherCombinations:
         # förder nicht in doppelbesetzung
         if category == 2 and len(combination) == 2:
             continue
-        # * religion nicht in doppelbesetzung
-        if category == 5 and len(combination) == 2:
-            continue
+        # # * religion nicht in doppelbesetzung
+        # if category == 5 and len(combination) == 2:
+        #     continue
         # * religion nicht in doppelbesetzung
         if category == 6 and len(combination) == 2:
             continue
         # * schwimmen MUSS in doppelbesetzung
         if category == 4 and len(combination) == 1:
             continue
-        # * sport KEINE doppelbesetzung
-        if category == 3 and len(combination) == 2:
-            continue
+        # # * sport KEINE doppelbesetzung
+        # if category == 3 and len(combination) == 2:
+        #     continue
         # * sport KEINE doppelbesetzung
         if category == 7 and len(combination) == 2:
             continue
@@ -149,8 +149,6 @@ for combination in teacherCombinations:
             "teachers": combination,
             "category": category
         })
-# TODO categoryLessons if teacherCategoryCombinations[lesson]["category"] == 5
-# TODO teacherLessons if teacher in teacherCategoryCombinations[lesson]["teachers"]
 lessons = range(len(teacherCategoryCombinations))
 
 categoryLessons = {}
@@ -247,15 +245,15 @@ class_teached_by = {
     for teacher in teachers
 }
 
-sport_teached_by = {
-    (day, clazz, teacher): LpVariable("Am %s hat Klasse %s Sport mit %s"
-                                      % (days_cleartext[day],
-                                         classes_cleartext[clazz],
-                                         teachers_cleartext[teacher]), cat=LpBinary)
-    for day in days
-    for clazz in classes[:4]
-    for teacher in teachers
-}
+# sport_teached_by = {
+#     (day, clazz, teacher): LpVariable("Am %s hat Klasse %s Sport mit %s"
+#                                       % (days_cleartext[day],
+#                                          classes_cleartext[clazz],
+#                                          teachers_cleartext[teacher]), cat=LpBinary)
+#     for day in days
+#     for clazz in classes[:4]
+#     for teacher in teachers
+# }
 
 teacher_day_slot_combination = {
     (teacher, day, slot_combination): LpVariable("Am Tag %s hat Lehrer %s die Stunden-Kombination %s"
@@ -335,19 +333,20 @@ for clazz in classes:
                     problem.addConstraint(x[(day, slot, clazz, lesson)] == 0)
 
 
-for teacher in teachers:
-    for day in days:
-        for clazz in classes[:4]:
-            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                                        for slot in slots
-                                        for lesson in lessons
-                                        if teacher in teacherCategoryCombinations[lesson]["teachers"] and teacherCategoryCombinations[lesson]["category"] == 3) <= 20*sport_teached_by[(day, clazz, teacher)])
-for teacher in teachers:
-    if not 3 in teacherCategories[teacher]:
-        for day in days:
-            for clazz in classes[:4]:
-                problem.addConstraint(
-                    sport_teached_by[(day, clazz, teacher)] == 0)
+# for teacher in teachers:
+#     for day in days:
+#         for clazz in classes[:4]:
+#             problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+#                                         for slot in slots
+#                                         for lesson in lessons
+#                                         if teacher in teacherCategoryCombinations[lesson]["teachers"] and teacherCategoryCombinations[lesson]["category"] == 3) <= 20*sport_teached_by[(day, clazz, teacher)])
+
+# for teacher in teachers:
+#     if not 3 in teacherCategories[teacher]:
+#         for day in days:
+#             for clazz in classes[:4]:
+#                 problem.addConstraint(
+#                     sport_teached_by[(day, clazz, teacher)] == 0)
 
 
 # * Jede klasse hat im slot 0 jeden tages unterricht
@@ -555,20 +554,17 @@ for day in days:
     # förderunterricht nur in der 1.-4. Stunde
     problem.addConstraint(lpSum(slot_used[(day, 5, 8)]) == 0)
 
-# * religion am ende des tages => muss
-# 1. und 2. Stufe
-for day in days:
-    for clazz in classes[:-1]:
-        if clazz > 3:
-            continue
-        for slot in slots[:-1]:
-            problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in categoryLessons[5]) <= 1 -
-                                  slot_used[(day, slot+1, clazz)])
+# # * religion am ende des tages => muss
+# # 1. und 2. Stufe
+# for day in days:
+#     for clazz in classes[:4]:
+#         for slot in slots[:-1]:
+#             problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in categoryLessons[5]) <= 1 -
+#                                   slot_used[(day, slot+1, clazz)])
+
 # 3. und 4. Stufe
 for day in days:
-    for clazz in classes[:-1]:
-        if clazz <= 3:
-            continue
+    for clazz in classes[4:-1]:
         for slot in slots[:-1]:
             problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for lesson in categoryLessons[6]) <= 1 -
                                   slot_used[(day, slot+1, clazz)])
@@ -631,55 +627,52 @@ for swim_day in swim_slots:
             problem.addConstraint(x[(swim_day, swim_slots[swim_day][0], clazz, lesson)] == x[(
                 swim_day, swim_slots[swim_day][1], clazz, lesson)])
 
-# * sport entweder doppelstunde oder einzel (1./2. klasse)
+# # * maximal einen sport-lehrer pro tag
+# for clazz in classes[:4]:
+#     for day in days:
+#         problem.addConstraint(
+#             lpSum(sport_teached_by[(day, clazz, teacher)]
+#                   for teacher in teachers) <= 1)
 
 
-# * maximal einen sport-lehrer pro tag
-for clazz in classes[:4]:
-    for day in days:
-        problem.addConstraint(
-            lpSum(sport_teached_by[(day, clazz, teacher)]
-                  for teacher in teachers) <= 1)
+# # * maximal zwei stunden sport pro tag pro klasse
+# for clazz in classes[:4]:
+#     for day in days:
+#         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+#                               for slot in slots for lesson in categoryLessons[3]) <= 2)
 
+# # * sport in der 1. und 2. Klasse nicht gleichzeitig in mehreren Klassen möglich
+# for day in days:
+#     for slot in slots:
+#         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for clazz in classes[:4]
+#                               for lesson in categoryLessons[3]) <= 1)
 
-# * maximal zwei stunden sport pro tag pro klasse
-for clazz in classes[:4]:
-    for day in days:
-        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                              for slot in slots for lesson in categoryLessons[3]) <= 2)
+# # * Nicht mehrere einzelstunden sport verteilt über den Tag
+# for clazz in classes[:4]:
+#     for day in days:
+#         for slot in [0, 2]:
+#             problem.addConstraint(
+#                 (1 - lpSum(x[(day, slot, clazz, lesson)]
+#                  for lesson in categoryLessons[3])) * 20 >= lpSum(x[(day, slot_follow, clazz, lesson)]
+#                                                                   for slot_follow in slots[slot+2:]
+#                                                                   for lesson in categoryLessons[3])
+#             )
+#         for slot in [1, 3]:
+#             problem.addConstraint(
+#                 (1 - lpSum(x[(day, slot, clazz, lesson)]
+#                  for lesson in categoryLessons[3])) * 20 >= lpSum(
+#                     x[(day, slot_follow, clazz, lesson)]
+#                     for slot_follow in slots[slot+1:]
+#                     for lesson in categoryLessons[3])
+#             )
 
-# * sport in der 1. und 2. Klasse nicht gleichzeitig in mehreren Klassen möglich
-for day in days:
-    for slot in slots:
-        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for clazz in classes[:4]
-                              for lesson in categoryLessons[3]) <= 1)
-
-# * Nicht mehrere einzelstunden sport verteilt über den Tag
-for clazz in classes[:4]:
-    for day in days:
-        for slot in [0, 2]:
-            problem.addConstraint(
-                (1 - lpSum(x[(day, slot, clazz, lesson)]
-                 for lesson in categoryLessons[3])) * 20 >= lpSum(x[(day, slot_follow, clazz, lesson)]
-                                                                  for slot_follow in slots[slot+2:]
-                                                                  for lesson in categoryLessons[3])
-            )
-        for slot in [1, 3]:
-            problem.addConstraint(
-                (1 - lpSum(x[(day, slot, clazz, lesson)]
-                 for lesson in categoryLessons[3])) * 20 >= lpSum(
-                    x[(day, slot_follow, clazz, lesson)]
-                    for slot_follow in slots[slot+1:]
-                    for lesson in categoryLessons[3])
-            )
-
-# * sport und schwimmen (1./2. Stufe) nicht an einem tag
-for clazz in classes[:4]:
-    for day in days:
-        problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                                    for slot in slots
-                                    for lesson in lessons
-                                    if teacherCategoryCombinations[lesson]["category"] in [3, 4]) <= 2)
+# # * sport und schwimmen (1./2. Stufe) nicht an einem tag
+# for clazz in classes[:4]:
+#     for day in days:
+#         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+#                                     for slot in slots
+#                                     for lesson in lessons
+#                                     if teacherCategoryCombinations[lesson]["category"] in [3, 4]) <= 2)
 
 ########################################################
 
