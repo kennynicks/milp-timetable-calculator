@@ -228,6 +228,16 @@ p_school_end_deviation = {
     for day in days
 }
 
+p_no_school_conference_day = LpVariable(
+    "Keine Schule am Konferenz-Tag", cat=LpInteger, lowBound=0, upBound=len(teachers))
+p_two_hours_on_conference_day = {
+    (teacher): LpVariable(
+        "Zwei Stunden Schule am Konferenz-Tag von Lehrer %s"
+        % (teacher), cat=LpInteger, lowBound=0, upBound=len(slots))
+    for teacher in teachers
+}
+
+
 class_teached_by = {
     (clazz, teacher): LpVariable("Klasse %s wird in der Woche von %s unterrichtet"
                                  % (classes_cleartext[clazz],
@@ -316,6 +326,7 @@ for clazz in classes:
                                     for slot in slots
                                     for lesson in categoryLessons[category]
                                     ) == class_categories[clazz, category])
+
 for clazz in classes:
     for lesson in lessons:
         if class_categories[clazz, teacherCategoryCombinations[lesson]["category"]] == 0:
@@ -428,9 +439,10 @@ for day in days:
     problem.addConstraint(lpSum(same_day_school_end[(
         day, school_end_slot)] for school_end_slot in school_end_slots) <= 1)
 
+
 # * am Konferenztag hat niemand frei
 problem.addConstraint(lpSum(teacher_school_end[(
-    teacher, conference_day, -1)] for teacher in teachers) == 0)
+    teacher, conference_day, -1)] for teacher in teachers) == p_no_school_conference_day)
 
 # * Alle Klassen haben nach der 5. Stunde Schluss am Konferenztag
 problem.addConstraint(same_day_school_end[(
@@ -446,10 +458,10 @@ for teacher in teachers:
                                 for slot in slots
                                 for lesson in lessons
                                 if teacher in teacherCategoryCombinations[lesson]["teachers"]
-                                ) >= 2)
+                                ) == p_two_hours_on_conference_day[(teacher)])
 
-# nicht zwingend aber höchst wünschenswert
 # * keine SPRINGSTUNDEN
+# nicht zwingend aber höchst wünschenswert
 for teacher in teachers:
     for day in days:
         problem.addConstraint(lpSum(teacher_day_slot_combination[(
@@ -589,8 +601,6 @@ for sport_day in sport_slots:
                                     for lesson in categoryLessons[7]) == lpSum(
             x[(sport_day, sport_slot, 7, lesson)]
             for lesson in categoryLessons[7]))
-    # problem.addConstraint(lpSum(x[(sport_day, sport_slots[sport_day][0], 4, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"]==7) == lpSum(x[(sport_day, sport_slots[sport_day][1], 4, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"]==7))
-    # problem.addConstraint(lpSum(x[(sport_day, sport_slots[sport_day][0], 6, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"]==7) == lpSum(x[(sport_day, sport_slots[sport_day][1], 6, lesson)] for lesson in lessons if teacherCategoryCombinations[lesson]["category"]==7))
     for lesson in categoryLessons[7]:  # gleicher lehrer in doppelstunde
         for clazz in classes[4:-1]:
             problem.addConstraint(x[(sport_day, sport_slots[sport_day][0], clazz, lesson)] == x[(
@@ -670,6 +680,7 @@ for clazz in classes[:4]:
                                     for slot in slots
                                     for lesson in lessons
                                     if teacherCategoryCombinations[lesson]["category"] in [3, 4]) <= 2)
+
 ########################################################
 
 
@@ -687,6 +698,9 @@ problem.setObjective(
           ) - lpSum(p_school_end_deviation[(day, grade_level)]
                     for grade_level in n_grade_levels
                     for day in days)
+    - p_no_school_conference_day
+    + lpSum(p_two_hours_on_conference_day[(teacher)]
+            for teacher in teachers)
     + lpSum(x[(day, slot, clazz, lesson)]  # * gewichtung doppelbesetzungen => vorallem 1./2.
             for day in days
             for slot in slots
