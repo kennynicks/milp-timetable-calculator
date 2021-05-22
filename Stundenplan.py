@@ -366,13 +366,12 @@ problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
 problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                       for day in days
                             for slot in slots
-                            for clazz in classes
                             for lesson in lessons
-                            if clazz == 6 or clazz == 7
-                            and teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
+                            for clazz in classes[6:-1]
+                            if teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
                             and Teacher_Sc in teacherCategoryCombinations[lesson]["teachers"]) == 0)
 
-#****************************************************
+# ****************************************************
 
 
 ##################  CONSTRAINTS  ########################
