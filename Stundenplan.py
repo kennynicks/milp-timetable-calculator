@@ -247,6 +247,12 @@ grade_levels_clear_text = {
 }
 
 n_grade_levels = range(len(grade_levels))
+
+ogs_teachers = [
+    Teacher_Gl,
+    Teacher_Kn,
+    Teacher_Ma
+]
 ################################################
 
 ##################  VARIABLES  ##########################
@@ -525,10 +531,17 @@ for clazz in classes:
 # genau drei mal ogs
 problem.addConstraint(lpSum(
     teacher_day_ogs[(teacher, day)] for teacher in teachers for day in days) == 3)
+
+# vordefinierte ogs teachers
+for ogs_teacher in ogs_teachers:
+    problem.addConstraint(
+        lpSum(teacher_day_ogs[(ogs_teacher, day)] for day in days) == 1)
+
 # jeder lehrer maximal einmal ogs
 for teacher in teachers:
     problem.addConstraint(
         lpSum(teacher_day_ogs[(teacher, day)] for day in days) <= 1)
+        
 # an jedem tag maxinmal einmal ogs
 for day in days:
     problem.addConstraint(
