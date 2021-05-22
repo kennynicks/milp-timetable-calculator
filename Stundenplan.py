@@ -356,7 +356,7 @@ teacher_day_ogs = {
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
 
-# **************************************************** PRIVATE CONSTRAINTS
+# **************************************************** PERSONAL CONSTRAINTS
 # * Ba unterrichtet nur die eigene Klasse in Englisch
 problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                       for day in days
@@ -366,6 +366,32 @@ problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                             if Teacher_Ba not in classTeachers[clazz]
                             and teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
                             and Teacher_Ba in teacherCategoryCombinations[lesson]["teachers"]) == 0)
+
+# * Ba startet um 8 oder hat frei
+p_ba_first_slot_start = LpVariable(
+    "Ba startet nicht um 8Uhr morgens", cat=LpInteger, lowBound=0, upBound=len(days))
+
+problem.addConstraint(lpSum(x[(day, 0, clazz, lesson)]
+                            for clazz in classes
+                            for day in days
+                            for lesson in teacherToLessons[Teacher_Ba]) +
+                      lpSum(teacher_school_end[(Teacher_Ba, day, -1)]
+                            for day in days) == p_ba_first_slot_start)
+
+
+# * Ba hat Sport/Schwimmen in der eigenen Klasse
+p_ba_sport_swimming_own_class = LpVariable(
+    "Ba unterrichtet Sport/Schwimmen bei wem anders", cat=LpInteger, lowBound=0)
+
+problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                            for clazz in classes
+                            for day in days
+                            for slot in slots
+                            for lesson in teacherToLessons[Teacher_Ba]
+                            if Teacher_Ba not in classTeachers[clazz]
+                            and (teacherCategoryCombinations[lesson]["category"] == Fach_Sport or teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen)) == p_ba_sport_swimming_own_class)
+
+
 # * Ke unterrichtet nur die eigene Klasse in Englisch
 problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                       for day in days
@@ -390,6 +416,7 @@ for day in [Tag_Montag, Tag_Mittwoch, Tag_Donnerstag, Tag_Freitag]:
     problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for slot in slots[0:2]
                           for clazz in classes
                                 for lesson in teacherToLessons[Teacher_Gl]) == 0)
+
 
 # ****************************************************
 
@@ -733,6 +760,8 @@ problem.setObjective(
                     for grade_level in n_grade_levels
                     for day in days)
     - p_no_school_conference_day
+    + p_ba_first_slot_start * 50
+    - p_ba_sport_swimming_own_class * 50
     + lpSum(p_two_hours_on_conference_day[(teacher)]
             for teacher in teachers)
     + lpSum(x[(day, slot, clazz, lesson)]  # * gewichtung doppelbesetzungen => vorallem 1./2.
