@@ -4,6 +4,7 @@
 from pulp import *
 from tabulate import tabulate
 import itertools
+import codecs
 
 ################## INPUT DATA ##################
 
@@ -16,15 +17,15 @@ slots_cleartext = ["1.", "2.", "3.", "4.", "5.", "6."]
 slots = range(len(slots_cleartext))
 
 # Klassen
-classes_cleartext = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "Fö"]
+classes_cleartext = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "Foerder"]
 classes = range(len(classes_cleartext))
 
 # Fächer
 categories_cleartext = ["Sonstiges", "Englisch",
-                        "Förder", "Schwimmen", "Religion", "Sport"]
+                        "Foerder", "Schwimmen", "Religion", "Sport"]
 categories = range(len(categories_cleartext))
 
-category_shorttext = ["", " 'E'", " 'FÖ'", " 'Schw'", " 'Rel'", " 'Sp'"]
+category_shorttext = ["", " 'E'", " 'F'", " 'Schw'", " 'Rel'", " 'Sp'"]
 
 
 ############################################
@@ -951,25 +952,62 @@ for day in days:
         "Stunde", *["%s - %s" % x for x in zip(classes_cleartext, classTeacherNames)]]))
 
 
-category_clazz_data = []
+# category_clazz_data = []
 
-for category in categories:
-    _categories = [categories_cleartext[category]]
-    for clazz in classes:
-        hours = sum(value(x[(day, slot, clazz, lesson)])
-                    for day in days for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == category)
-        _categories.append("%d" %
-                           (hours))
-    category_clazz_data.append(_categories)
+# for category in categories:
+#     _categories = [categories_cleartext[category]]
+#     for clazz in classes:
+#         hours = sum(value(x[(day, slot, clazz, lesson)])
+#                     for day in days for slot in slots for lesson in lessons if teacherCategoryCombinations[lesson]["category"] == category)
+#         _categories.append("%d" %
+#                            (hours))
+#     category_clazz_data.append(_categories)
 
-print()
-print(tabulate(category_clazz_data, headers=["Fach", *classes_cleartext]))
+# print()
+# print(tabulate(category_clazz_data, headers=["Fach", *classes_cleartext]))
 
 
-print()
-for day in days:
-    if sum(value(same_day_school_end[(day, school_end_slot)])for school_end_slot in school_end_slots) == 1:
-        print("Gemeinsam Schluss am %s" % (days_cleartext[day]))
+# print()
+# for day in days:
+#     if sum(value(same_day_school_end[(day, school_end_slot)])for school_end_slot in school_end_slots) == 1:
+#         print("Gemeinsam Schluss am %s" % (days_cleartext[day]))
 
 #############################################
-# TODO persönliche präferenzen
+
+day_data = {}
+for day in days:
+    day_data[day] = []
+
+for day in days:
+    for slot in slots:
+        slot_data = [slots_cleartext[slot]]
+        day_data[day].append(slot_data)
+        for clazz in classes:
+            if sum(value(x[(day, slot, clazz, lesson)]) for lesson in lessons) == 0:
+                slot_data.append("-")
+                continue
+
+            for lesson in lessons:
+                if value(x[(day, slot, clazz, lesson)]) == 0:
+                    continue
+                slot_data.append(", ".join(list(map(
+                    lambda x: teachers_cleartext[x], teacherCategoryCombinations[lesson]["teachers"]))) + category_shorttext[
+                    teacherCategoryCombinations[lesson]["category"]])
+    day_data[day].append(["7.", *["" for clazz in classes]])
+    teacher_ogs_data = ["8."]
+    for teacher in teachers:
+        if value(teacher_day_ogs[(teacher, day)]) == 1:
+            teacher_ogs_data.append("OGS von %s" %
+                                    (teachers_cleartext[teacher]))
+    for e in range(len(classes)-len(teacher_ogs_data)):
+        teacher_ogs_data.append(";")
+    day_data[day].append(teacher_ogs_data)
+text_file = codecs.open("Stundenplan.csv", "w", "utf-8")
+
+for day in days:
+    text_file.write(";".join([days_cleartext[day],
+                          "Stunde", *["%s - %s" % x for x in zip(classes_cleartext, classTeacherNames)]])+"\n")
+    for slot in range(8):
+        text_file.write(";"+";".join(day_data[day][slot])+"\n")
+    text_file.write("\n")
+text_file.close()
