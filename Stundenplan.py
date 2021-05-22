@@ -342,6 +342,39 @@ teacher_day_ogs = {
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
 
+#**************************************************** PRIVATE CONSTRAINTS
+# * Ba unterrichtet nur die eigene Klasse in Englisch
+problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                      for day in days
+                            for slot in slots
+                            for clazz in classes
+                            for lesson in lessons
+                            if Teacher_Ba not in classTeachers[clazz]
+                            and teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
+                            and Teacher_Ba in teacherCategoryCombinations[lesson]["teachers"]) == 0)
+# * Ke unterrichtet nur die eigene Klasse in Englisch
+problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                      for day in days
+                            for slot in slots
+                            for clazz in classes
+                            for lesson in lessons
+                            if Teacher_Ke not in classTeachers[clazz]
+                            and teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
+                            and Teacher_Ke in teacherCategoryCombinations[lesson]["teachers"]) == 0)
+
+# * Sc unterrichtet nur 4. Klassen in Englisch
+problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                      for day in days
+                            for slot in slots
+                            for clazz in classes
+                            for lesson in lessons
+                            if clazz == 6 or clazz == 7
+                            and teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
+                            and Teacher_Sc in teacherCategoryCombinations[lesson]["teachers"]) == 0)
+
+#****************************************************
+
+
 ##################  CONSTRAINTS  ########################
 # * Jede Klasse hat genau n stunden aus kategorie c pro Woche
 for clazz in classes:
@@ -541,7 +574,7 @@ for ogs_teacher in ogs_teachers:
 for teacher in teachers:
     problem.addConstraint(
         lpSum(teacher_day_ogs[(teacher, day)] for day in days) <= 1)
-        
+
 # an jedem tag maxinmal einmal ogs
 for day in days:
     problem.addConstraint(
