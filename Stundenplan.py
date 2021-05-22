@@ -417,6 +417,28 @@ for day in [Tag_Montag, Tag_Mittwoch, Tag_Donnerstag, Tag_Freitag]:
                           for clazz in classes
                                 for lesson in teacherToLessons[Teacher_Gl]) == 0)
 
+# * Ma startet um 8 oder hat frei
+p_ma_first_slot_start = LpVariable(
+    "Ma startet nicht um 8Uhr morgens", cat=LpInteger, lowBound=0, upBound=len(days))
+
+problem.addConstraint(lpSum(x[(day, 0, clazz, lesson)]
+                            for clazz in classes
+                            for day in days
+                            for lesson in teacherToLessons[Teacher_Ma]) +
+                      lpSum(teacher_school_end[(Teacher_Ma, day, -1)]
+                            for day in days) == p_ma_first_slot_start)
+
+# * Ma hat Sport/Schwimmen in der eigenen Klasse
+p_ma_sport_swimming_own_class = LpVariable(
+    "Ma unterrichtet Sport/Schwimmen bei wem anders", cat=LpInteger, lowBound=0)
+
+problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                            for clazz in classes
+                            for day in days
+                            for slot in slots
+                            for lesson in teacherToLessons[Teacher_Ma]
+                            if Teacher_Ma not in classTeachers[clazz]
+                            and (teacherCategoryCombinations[lesson]["category"] == Fach_Sport or teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen)) == p_ma_sport_swimming_own_class)
 
 # ****************************************************
 
@@ -762,6 +784,8 @@ problem.setObjective(
     - p_no_school_conference_day
     + p_ba_first_slot_start * 50
     - p_ba_sport_swimming_own_class * 50
+    + p_ma_first_slot_start * 50
+    - p_ma_sport_swimming_own_class * 50
     + lpSum(p_two_hours_on_conference_day[(teacher)]
             for teacher in teachers)
     + lpSum(x[(day, slot, clazz, lesson)]  # * gewichtung doppelbesetzungen => vorallem 1./2.
