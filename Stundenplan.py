@@ -182,6 +182,15 @@ for combination in teacherCombinations:
         # * Gl nur in Doppelbesetzung
         if Teacher_Gl in combination and len(combination) == 1:
             continue
+        # * Kl macht keinen Sport
+        if Teacher_Kl in combination and category == Fach_Sport:
+            continue
+        # * Kl macht kein Schwimmen
+        if Teacher_Kl in combination and category == Fach_Schwimmen:
+            continue
+        # * Sc macht nur Englisch oder Doppelbesetzung:
+        if Teacher_Sc in combination and category != Fach_Englisch and len(combination) == 2:
+            continue
         teacherCategoryCombinations.append({
             "teachers": combination,
             "category": category
@@ -863,7 +872,7 @@ problem.setObjective(
             for lesson in lessons
             if len(teacherCategoryCombinations[lesson]["teachers"]) == 2
             ) * 1
-    + lpSum(x[(day, slot, clazz, lesson)]#* GL macht sport und schwimmen
+    + lpSum(x[(day, slot, clazz, lesson)]  # * GL macht sport und schwimmen
             for day in days
             for slot in slots
             for clazz in classes[:-1]
@@ -871,12 +880,18 @@ problem.setObjective(
             if Teacher_Gl in teacherCategoryCombinations[lesson]["teachers"]
             and (teacherCategoryCombinations[lesson]["category"] == Fach_Sport or teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen)*50
             )
-    + lpSum(x[(day, slot, clazz, lesson)]#* Ka macht gerne Englisch in der 1.
+    + lpSum(x[(day, slot, clazz, lesson)]  # * Ka macht gerne Englisch in der 1.
             for day in days
             for slot in slots
             for clazz in classes[:2]
             for lesson in teacherToLessons[Teacher_Ka]
             if teacherCategoryCombinations[lesson]["category"] == Fach_Englisch)*50
+    + lpSum(x[(day, slot, clazz, lesson)]  # * Gr macht gerne Religion in der 1.
+            for day in days
+            for slot in slots
+            for clazz in classes[6:-1]
+            for lesson in teacherToLessons[Teacher_Gr]
+            if teacherCategoryCombinations[lesson]["category"] == Fach_Religion)*50
 )
 ################################################
 # The problem is solved using PuLP's choice of Solver
