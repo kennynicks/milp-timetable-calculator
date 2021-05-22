@@ -176,6 +176,9 @@ for combination in teacherCombinations:
         # * sport KEINE doppelbesetzung
         if category == Fach_Sport and len(combination) == 2:
             continue
+        # * Him nur in Doppelbesetzung
+        if Teacher_Him in combination and len(combination) == 1:
+            continue
         teacherCategoryCombinations.append({
             "teachers": combination,
             "category": category
@@ -342,7 +345,7 @@ teacher_day_ogs = {
 
 problem = LpProblem("Stundenplan", sense=LpMaximize)
 
-#**************************************************** PRIVATE CONSTRAINTS
+# **************************************************** PRIVATE CONSTRAINTS
 # * Ba unterrichtet nur die eigene Klasse in Englisch
 problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                       for day in days
@@ -364,7 +367,7 @@ problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
 
 # * Sc unterrichtet nur 4. Klassen in Englisch
 problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-                      for day in days
+                            for day in days
                             for slot in slots
                             for lesson in lessons
                             for clazz in classes[6:-1]
