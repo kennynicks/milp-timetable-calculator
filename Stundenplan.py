@@ -179,6 +179,9 @@ for combination in teacherCombinations:
         # * Him nur in Doppelbesetzung
         if Teacher_Him in combination and len(combination) == 1:
             continue
+        # * Gl nur in Doppelbesetzung
+        if Teacher_Gl in combination and len(combination) == 1:
+            continue
         teacherCategoryCombinations.append({
             "teachers": combination,
             "category": category
@@ -193,6 +196,14 @@ for category in categories:
         if teacherCategoryCombinations[lesson]["category"] == category:
             _lessons.append(lesson)
     categoryLessons[category] = _lessons
+
+teacherToLessons = {}
+for teacher in teachers:
+    _lessons = []
+    for lesson in lessons:
+        if teacher in teacherCategoryCombinations[lesson]["teachers"]:
+            _lessons.append(lesson)
+    teacherToLessons[teacher] = _lessons
 
 slot_combinations = {
     0: [0, 0, 0, 0, 0, 0],
@@ -373,6 +384,12 @@ problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                             for clazz in classes[6:-1]
                             if teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
                             and Teacher_Sc in teacherCategoryCombinations[lesson]["teachers"]) == 0)
+
+# * Gl
+for day in [Tag_Montag, Tag_Mittwoch, Tag_Donnerstag, Tag_Freitag]:
+    problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)] for slot in slots[0:2]
+                          for clazz in classes
+                                for lesson in teacherToLessons[Teacher_Gl]) == 0)
 
 # ****************************************************
 
@@ -731,7 +748,15 @@ problem.setObjective(
             for clazz in range(4, 8)
             for lesson in lessons
             if len(teacherCategoryCombinations[lesson]["teachers"]) == 2
-            ) * 1)
+            ) * 1
+    + lpSum(x[(day, slot, clazz, lesson)]
+            for day in days
+            for slot in slots
+            for clazz in classes[:-1]
+            for lesson in lessons
+            if Teacher_Gl in teacherCategoryCombinations[lesson]["teachers"]
+            and (teacherCategoryCombinations[lesson]["category"] == Fach_Sport or teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen)*50)
+)
 ################################################
 # The problem is solved using PuLP's choice of Solver
 print("Constraints: %s" % (len(problem.constraints)))
