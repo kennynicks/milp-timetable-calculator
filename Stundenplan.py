@@ -621,6 +621,35 @@ for swim_day in swim_slots:
             problem.addConstraint(x[(swim_day, swim_slots[swim_day][0], clazz, lesson)] == x[(
                 swim_day, swim_slots[swim_day][1], clazz, lesson)])
 
+# * Stufen haben gleich viele Doppelbesetzungen
+for clazz in [0, 2, 4, 6]:
+    problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                                for day in days
+                                for slot in slots
+                                for lesson in lessons
+                                if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen) ==
+                          lpSum(x[(day, slot, clazz+1, lesson)]
+                                for day in days
+                                for slot in slots
+                                for lesson in lessons
+                                if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen))
+
+# * Dritte Klassen haben mindestens drei Stunden in Doppelbesetzung
+for clazz in [4, 5]:
+    problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                                for day in days
+                                for slot in slots
+                                for lesson in lessons
+                                if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen) >= 3)
+
+# * Vierte Klassen haben mindestens drei Stunden in Doppelbesetzung
+for clazz in [6, 7]:
+    problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                                for day in days
+                                for slot in slots
+                                for lesson in lessons
+                                if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen) >= 2)
+
 ########################################################
 
 
