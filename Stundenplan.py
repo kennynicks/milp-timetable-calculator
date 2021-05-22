@@ -191,6 +191,12 @@ for combination in teacherCombinations:
         # * Sc macht nur Englisch oder Doppelbesetzung:
         if Teacher_Sc in combination and category != Fach_Englisch and len(combination) == 2:
             continue
+        # * Si hat keine Doppelbesetzung mit Ba:
+        if Teacher_Si in combination and Teacher_Ba in combination:
+            continue
+        # * Ka hat keine Doppelbesetzung mit Ba:
+        if Teacher_Ka in combination and Teacher_Ba in combination:
+            continue
         teacherCategoryCombinations.append({
             "teachers": combination,
             "category": category
@@ -447,6 +453,12 @@ problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                             for clazz in classes[6:-1]
                             if teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
                             and Teacher_Sc in teacherCategoryCombinations[lesson]["teachers"]) == 0)
+
+# * Sc hat in den ersten drei Stunden Montags keinen Unterricht
+for slot in slots[:3]:
+    problem.addConstraint(lpSum(x[(Tag_Montag, slot, clazz, lesson)]
+                          for clazz in classes 
+                          for lesson in teacherToLessons[Teacher_Sc]) == 0)
 
 # * Gl nur dienstags volltags da
 for day in [Tag_Montag, Tag_Mittwoch, Tag_Donnerstag, Tag_Freitag]:
