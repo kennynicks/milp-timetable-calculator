@@ -843,18 +843,18 @@ for clazz in [0, 2, 4, 6]:
                                 for lesson in lessons
                                 if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen))
 
-# # * Erste Stufe hat mehr Doppelbesetzungen als die zweite
-# problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
-#                             for day in days
-#                             for slot in slots
-#                             for clazz in [0, 1]
-#                             for lesson in lessons
-#                             if len(teacherCategoryCombinations[lesson]["teachers"]) == 2) >= lpSum(x[(day, slot, clazz, lesson)]
-#                                                                                                    for day in days
-#                                                                                                    for slot in slots
-#                                                                                                    for clazz in [2, 3]
-#                                                                                                    for lesson in lessons
-#                                                                                                    if len(teacherCategoryCombinations[lesson]["teachers"]) == 2))
+# * Erste Stufe hat mehr Doppelbesetzungen als die zweite
+problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+                            for day in days
+                            for slot in slots
+                            for clazz in [0, 1]
+                            for lesson in lessons
+                            if len(teacherCategoryCombinations[lesson]["teachers"]) == 2) >= lpSum(x[(day, slot, clazz, lesson)]
+                                                                                                   for day in days
+                                                                                                   for slot in slots
+                                                                                                   for clazz in [2, 3]
+                                                                                                   for lesson in lessons
+                                                                                                   if len(teacherCategoryCombinations[lesson]["teachers"]) == 2))
 
 # * Dritte Klassen haben mindestens drei Stunden in Doppelbesetzung
 for clazz in [4, 5]:
