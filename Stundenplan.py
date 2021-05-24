@@ -898,12 +898,6 @@ for swim_slot in swim_slots[Tag_Donnerstag]:
                           for lesson in lessons
                           if teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen) == 1)
 
-# # * performance
-# for teacher in teachers:
-#     if Fach_Englisch not in teacherCategories[teacher]:
-#         for grade_level in n_grade_levels:
-#             problem.addConstraint(
-#                 english_teached_by[(grade_level, teacher)] == 0)
 ########################################################
 #################  OBJECTIVE  ##################
 # Maximize teacher hours in main class
@@ -942,8 +936,8 @@ problem.setObjective(
             for clazz in classes[:-1]
             for lesson in lessons
             if Teacher_Gl in teacherCategoryCombinations[lesson]["teachers"]
-            and (teacherCategoryCombinations[lesson]["category"] == Fach_Sport or teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen)*50
-            )
+            and (teacherCategoryCombinations[lesson]["category"] == Fach_Sport or teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen)
+            )*50
     + lpSum(x[(day, slot, clazz, lesson)]  # * Ka macht gerne Englisch in der 1.
             for day in days
             for slot in slots
