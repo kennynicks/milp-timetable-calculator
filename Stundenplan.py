@@ -530,6 +530,11 @@ for day in days:
 problem.addConstraint(lpSum(
     x[(day, Stunde_Sechste, clazz, lesson)] for day in days for clazz in classes for lesson in teacherToLessons[Teacher_Ka]) <= 2)
 
+# * Dritte Klasse am Donnerstag Schwimmen
+for swim_slot in swim_slots[Tag_Donnerstag]:
+    problem.addConstraint(lpSum(x[(Tag_Donnerstag, swim_slot, 5, lesson)]
+                          for lesson in lessons
+                          if teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen) == 1)
 # ****************************************************
 
 
@@ -866,12 +871,6 @@ for clazz in [6, 7]:
                                 for slot in slots
                                 for lesson in lessons
                                 if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen) >= 2)
-
-# # * Dritte Klasse am Donnerstag Schwimmen
-# for swim_slot in swim_slots[Tag_Donnerstag]:
-#     problem.addConstraint(lpSum(x[(Tag_Donnerstag, swim_slot, 5, lesson)]
-#                           for lesson in lessons
-#                           if teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen) == 1)
 
 # * Erste Klasse hat keine sechs Stunden
 for clazz in [0, 1]:
