@@ -171,7 +171,6 @@ for combination in teacherCombinations:
         # * religion nicht in doppelbesetzung
         if category == Fach_Religion and len(combination) == 2:
             continue
-        # TODO implement
         # * englisch nicht in doppelbesetzung
         if category == Fach_Englisch and len(combination) == 2:
             continue
@@ -465,7 +464,7 @@ problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                             for day in days
                             for slot in slots
                             for lesson in lessons
-                            for clazz in classes[6:-1]
+                            for clazz in classes[:6]
                             if teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
                             and Teacher_Sc in teacherCategoryCombinations[lesson]["teachers"]) == 0)
 
@@ -483,7 +482,7 @@ for day in [Tag_Montag, Tag_Mittwoch, Tag_Donnerstag, Tag_Freitag]:
 
 # * Ma startet um 8 oder hat frei
 for day in days:
-    problem.addConstraint(lpSum(x[(day, 0, clazz, lesson)]
+    problem.addConstraint(lpSum(x[(day, Stunde_Erste, clazz, lesson)]
                                 for clazz in classes
                                 for lesson in teacherToLessons[Teacher_Ma]) +
                           teacher_school_end[(Teacher_Ma, day, -1)] == 1)
@@ -528,9 +527,9 @@ problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                             for day in days
                             for slot in slots
                             for lesson in lessons
-                            for clazz in classes[6:-1]
+                            for clazz in classes[6:]
                             if teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
-                            and Teacher_Sc in teacherCategoryCombinations[lesson]["teachers"]) == 0)
+                            and Teacher_SB in teacherCategoryCombinations[lesson]["teachers"]) == 0)
 
 # * Ka startet um 9 oder hat frei
 for day in days:
@@ -541,10 +540,9 @@ for day in days:
 problem.addConstraint(lpSum(
     x[(day, Stunde_Sechste, clazz, lesson)] for day in days for clazz in classes for lesson in teacherToLessons[Teacher_Ka]) <= 2)
 
-# TODO implement
 # * Dritte Klasse am Donnerstag Schwimmen
 for swim_slot in swim_slots[Tag_Donnerstag]:
-    problem.addConstraint(lpSum(x[(Tag_Donnerstag, swim_slot, 5, lesson)]
+    problem.addConstraint(lpSum(x[(Tag_Donnerstag, swim_slot, Tag_Donnerstag, lesson)]
                           for lesson in lessons
                           if teacherCategoryCombinations[lesson]["category"] == Fach_Schwimmen) == 1)
 # ****************************************************
@@ -701,7 +699,7 @@ for clazz in classes:
                                     ) <= 29 * class_teached_by[(clazz, teacher)])
 
 # nicht zwingend aber höchst wünschenswert (möglichst nicht 1./2.)
-# # * Jede Klasse hat maximal drei Lehrkräfte (frisst unnormal viel Zeit)
+# * Jede Klasse hat maximal drei Lehrkräfte (frisst unnormal viel Zeit)
 for clazz in classes:
     for teacher in classTeachers[clazz]:
         problem.addConstraint(class_teached_by[(clazz, teacher)] == 1)
@@ -855,7 +853,6 @@ for clazz in [0, 2, 4, 6]:
                                 for lesson in lessons
                                 if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen))
 
-# TODO implement
 # * Erste Stufe hat mehr Doppelbesetzungen als die zweite
 problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                             for day in days
@@ -898,6 +895,7 @@ for day in days:
                                 for lesson in lessons
                                 if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen) >= 4)
 # TODO implement
+# * Ein Englisch-Lehrer pro Stufe
 for teacher in teachers:
     for grade_level in n_grade_levels:
         problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
@@ -908,7 +906,6 @@ for teacher in teachers:
                                     if teacher in teacherCategoryCombinations[lesson]["teachers"]
                                     and Fach_Englisch in teacherCategories[teacher]) <= 50*english_teached_by[(grade_level, teacher)])
 
-# * Ein Englisch-Lehrer pro Stufe
 for grade_level in n_grade_levels:
     problem.addConstraint(
         lpSum(english_teached_by[(grade_level, teacher)] for teacher in teachers) == 1)
