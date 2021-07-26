@@ -894,7 +894,16 @@ for day in days:
                                 for clazz in classes
                                 for lesson in lessons
                                 if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen) >= 4)
-# TODO implement
+
+# * Doppelbesetzungen immer ab der 1. Stunde, die ganze Woche über
+for day in days:
+    problem.addConstraint(lpSum(x[(day, Stunde_Erste, clazz, lesson)]
+                                for clazz in classes
+                                for lesson in lessons
+                                if len(teacherCategoryCombinations[lesson]["teachers"]) == 2 and teacherCategoryCombinations[lesson]["category"] != Fach_Schwimmen)
+                          >= 1
+                          )
+
 # * Ein Englisch-Lehrer pro Stufe
 for teacher in teachers:
     for grade_level in n_grade_levels:
