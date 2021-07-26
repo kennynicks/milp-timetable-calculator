@@ -938,6 +938,8 @@ problem.setObjective(
             for day in days)
     - p_no_school_conference_day
     + p_wa_no_school_once*10
+    + lpSum(slot_used[(day, slot, clazz)] for slot in [Stunde_Fuenfte]
+            for day in days for clazz in classes[:-1])*10  # fünf stunden pro tag belohnen
     + lpSum(p_two_hours_on_conference_day[(teacher)]
             for teacher in teachers)*20
     + lpSum(x[(day, slot, clazz, lesson)]  # * gewichtung doppelbesetzungen => vorallem 1./2.
