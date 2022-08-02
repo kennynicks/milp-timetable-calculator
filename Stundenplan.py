@@ -77,20 +77,21 @@ teachers_cleartext = [
     "Him"  # 10
 ]
 teachers = range(len(teachers_cleartext))
-remedial_teacher = Teacher_Kl
+remedial_teacher = Teacher_Ba
 conference_day = Tag_Montag
 conference_slot = Stunde_Sechste
 
+
 #! fächer: sport [alle], schwimmen, englisch, religion [1./2. alle sonst nicht alle]
 teacherCategories = [
-    [Fach_Sonstiges, Fach_Sport, Fach_Schwimmen, Fach_Englisch],
+    [Fach_Sonstiges, Fach_Sport, Fach_Englisch],
     [Fach_Sonstiges, Fach_Sport, Fach_Religion],
     [Fach_Sonstiges, Fach_Sport, Fach_Englisch],
     [Fach_Sonstiges, Fach_Sport, Fach_Englisch],
     [Fach_Sonstiges, Fach_Sport],
-    [Fach_Sonstiges, Fach_Sport, Fach_Schwimmen],
-    [Fach_Sonstiges, Fach_Sport, Fach_Schwimmen, Fach_Religion],
-    [Fach_Sonstiges, Fach_Sport, Fach_Englisch],
+    [Fach_Sonstiges, Fach_Sport],
+    [Fach_Sonstiges, Fach_Sport, Fach_Religion],
+    [Fach_Sonstiges, Fach_Englisch],
     [Fach_Sonstiges, Fach_Sport],
     [Fach_Sonstiges, Fach_Sport],
     [Fach_Sonstiges, Fach_Sport, Fach_Englisch]
@@ -106,12 +107,12 @@ sport_slots = {
 class_categories_raw = [
     [23, 0, 0, 0, 0, 0],
     [23, 0, 0, 0, 0, 0],
-    [22, 2, 0, 0, 0, 0],
-    [22, 2, 0, 0, 0, 0],
+    [24, 0, 0, 0, 0, 0],
+    [24, 0, 0, 0, 0, 0],
     [22, 2, 0, 0, 1, 2],
     [22, 2, 0, 0, 1, 2],
-    [22, 2, 0, 0, 1, 2],  # 3
-    [22, 2, 0, 0, 1, 2],  # 3
+    [23, 2, 0, 0, 1, 2],  # 3
+    [23, 2, 0, 0, 1, 2],  # 3
     [0, 0, 10, 0, 0, 0]
 ]
 
@@ -123,19 +124,19 @@ for clazz in classes:
 
 teacherLessons = [
     22, 27, 14,
-    19, 26, 24, 24,
+    19, 25, 28, 24,
     14, 28, 18, 28
 ]
 
 classTeachers = {
-    0: (Teacher_Oc,),
-    1: (Teacher_Gr,),
-    2: (Teacher_Wa,),
-    3: (Teacher_SB, Teacher_Ka,),
-    4: (Teacher_Si,),
-    5: (Teacher_Ke,),
-    6: (Teacher_Ba,),
-    7: (Teacher_Ma,),
+    0: (Teacher_Kl,),
+    1: (Teacher_Ma,),
+    2: (Teacher_Oc,),
+    3: (Teacher_Gr, ),
+    4: (Teacher_Wa,),
+    5: (Teacher_Ka,Teacher_SB,),
+    6: (Teacher_Si,),
+    7: (Teacher_Ke,),
     8: (remedial_teacher,)
 }
 
@@ -172,6 +173,9 @@ for combination in teacherCombinations:
             continue
         # * Ka hat keine Doppelbesetzung mit Ba:
         if Teacher_Ka in combination and Teacher_Ba in combination:
+            continue
+        # * Wa hat keine Doppelbesetzung mit Kl:
+        if Teacher_Wa in combination and Teacher_Kl in combination:
             continue
         teacherCategoryCombinations.append({
             "teachers": combination,
@@ -279,9 +283,9 @@ grade_levels_clear_text = {
 n_grade_levels = range(len(grade_levels))
 
 ogs_teachers = [
-    Teacher_Him,
-    Teacher_Kl,
-    Teacher_Si
+    Teacher_Ma,
+    Teacher_Gr,
+    Teacher_Oc
 ]
 ################################################
 
@@ -394,20 +398,19 @@ for day in days:
                                 for lesson in teacherToLessons[Teacher_Ma]) +
                           teacher_school_end[(Teacher_Ma, day, -1)] == 1)
 
-# * Sb unterrichtet nur in der 1. bis 3. Stufe Englisch
-problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
+# * Sb unterrichtet nur in der bis 3b Englisch
+problem.addConstraint(lpSum(x[(day, slot, 7, lesson)]
                             for day in days
                             for slot in slots
                             for lesson in lessons
-                            for clazz in classes[6:]
                             if teacherCategoryCombinations[lesson]["category"] == Fach_Englisch
                             and Teacher_SB in teacherCategoryCombinations[lesson]["teachers"]) == 0)
 
-# * Ka startet um 9 oder hat frei
-for day in days:
-    problem.addConstraint(lpSum(teacher_day_slot_combination[(Teacher_Ka, day, combination)]
-                                for combination in n_slot_combinations
-                                if combinationToStartSlot[combination] == Stunde_Zweite or combinationToStartSlot[combination] == -1) == 1)
+# # * Ka startet um 9 oder hat frei
+# for day in days:
+#     problem.addConstraint(lpSum(teacher_day_slot_combination[(Teacher_Ka, day, combination)]
+#                                 for combination in n_slot_combinations
+#                                 if combinationToStartSlot[combination] == Stunde_Zweite or combinationToStartSlot[combination] == -1) == 1)
 # * Ka kann 3 Tage nur bis 12:45 (Tage nicht festgesetzt)
 problem.addConstraint(lpSum(
     x[(day, Stunde_Sechste, clazz, lesson)] for day in days for clazz in classes for lesson in teacherToLessons[Teacher_Ka]) <= 2)
@@ -722,7 +725,7 @@ problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                                                                                                    for lesson in lessons
                                                                                                    if len(teacherCategoryCombinations[lesson]["teachers"]) == 2))
 
-# # * Dritte Klassen haben mindestens drei Stunden in Doppelbesetzung
+# * Dritte Klassen haben mindestens drei Stunden in Doppelbesetzung
 for clazz in [4, 5]:
     problem.addConstraint(lpSum(x[(day, slot, clazz, lesson)]
                                 for day in days
