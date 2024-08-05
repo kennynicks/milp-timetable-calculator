@@ -1,10 +1,11 @@
-# * wer kann was unterrichten
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import codecs
 import itertools
 from pulp import *
 from tabulate import tabulate
-from config import LESSONS_NONE, Days, Lessons, Subjects
-from input import CONFERENCE_DAY, CONFERENCE_LESSON, SPORT_SLOTS, SWIMMING_SLOTS, ClassLevels, Classes, Teachers
+from config import LESSONS_NONE, Days, Lessons, OgsSlots, Subjects
+from input import CONFERENCE_DAY, CONFERENCE_LESSON, OGS_DAYS, SPORT_SLOTS, SWIMMING_SLOTS, ClassLevels, Classes, Teachers
 
 # Alle Kombinationen von Einzelunterricht und Doppelbesetzung
 teacher_combinations = list(itertools.combinations(
@@ -242,11 +243,12 @@ same_day_school_end = {
     for school_end_lesson in school_end_lessons
 }
 
-# teacher_day_ogs = {#todo ogs
-#     (teacher, day): LpVariable("%s hat am %s OGS" % (teachers_cleartext[teacher], days_cleartext[day]), cat=LpBinary)
-#     for teacher in teachers
-#     for day in days
-# }
+teacher_day_ogs = {
+    (teacher.index, day.index, ogs_slot.index): LpVariable("%s hat am %s in der %s OGS" % (teacher.text, day.text, ogs_slot.text), cat=LpBinary)
+    for teacher in Teachers
+    for day in Days
+    for ogs_slot in OgsSlots
+}
 
 english_teached_by = {
     (clazz.index, teacher.index): LpVariable("In der %s wird Englisch von %s unterrichtet"
@@ -377,8 +379,8 @@ for teacher in Teachers:
                                 for combo in n_teacher_subject_combinations
                                 if teacher in teacher_subject_combinations[combo]["teachers"]
                                 )
-                          #   + lpSum(teacher_day_ogs[(teacher, day)]#todo ogs
-                          #           for day in days)
+                          + lpSum(teacher_day_ogs[(teacher.index, day.index, slot.index)]
+                                  for day in Days for slot in OgsSlots)
                           == teacher.value.lesson_ct)
 
 # * Alle Klassenstufen haben paarweise gleichzeitig schluss (1a+1b gleichzeitig!) => kann muss aber nicht
@@ -504,9 +506,6 @@ for clazz in Classes:
                                     if teacher in clazz.value.classteachers) >= 2)
 
 # region ogs
-# # * OGS => 3 Lehrer opfern jeweils eine Stunde die Woche für OGS (anschluss an die 6. Stunde 14-15uhr) keine springstunde
-# # TODO: Dienstag bis freitag jeweils 2 Lehrer
-# # An einem Tag drei Lehrer
 # # Ein lehrer von 12 - 13 ( 5. Stunde + 15 Min)
 # # 1. Lehrer kann nach der OGS keinen Unterricht mehr haben
 # # Zweite und Dritte Lehrer von 14-15 Uhr
@@ -514,34 +513,51 @@ for clazz in Classes:
 # # Mi (Si, Kl, Ma)
 # # DO (Ke, Him)
 # # Fr( Ma, Gr)
-# # genau drei mal ogs
-# problem.addConstraint(lpSum(
-#     teacher_day_ogs[(teacher, day)] for teacher in teachers for day in days) == 3)
+# * ogs an jedem ogs tag
+for day in Days:
+    if day not in OGS_DAYS:
+        # * kein ogs an tagen ohne ogs
+        problem.addConstraint(lpSum(
+            teacher_day_ogs[(teacher.index, day.index, slot.index)] for slot in OgsSlots for teacher in Teachers) == 0)
+        continue
+    # # * Für alle Lehrer die nicht in der OGS sind, keine OGS
+    problem.addConstraint(lpSum(
+        teacher_day_ogs[(teacher.index, day.index, slot.index)] for slot in OgsSlots for teacher in Teachers if teacher not in OGS_DAYS[day]) == 0)
+    if day == Days.Friday:
+        problem.addConstraint(
+            lpSum(teacher_day_ogs[(teacher.index, day.index, OgsSlots.Fifth.index)] for teacher in OGS_DAYS[day]) == len(OGS_DAYS[day]))
+        problem.addConstraint(
+            lpSum(teacher_day_ogs[(teacher.index, day.index, OgsSlots.Eigth.index)] for teacher in OGS_DAYS[day]) == 0)
+    else:
+        # * Ein lehrer im ersten slot
+        problem.addConstraint(lpSum(
+            teacher_day_ogs[(teacher.index, day.index, OgsSlots.Fifth.index)] for teacher in OGS_DAYS[day]) == 1)
+        # * ein oder zwei lehrer im zweiten slot
+        if len(OGS_DAYS[day]) == 2:
+            problem.addConstraint(lpSum(
+                teacher_day_ogs[(teacher.index, day.index, OgsSlots.Eigth.index)] for teacher in OGS_DAYS[day]) == 1)
+        else:
+            problem.addConstraint(lpSum(
+                teacher_day_ogs[(teacher.index, day.index, OgsSlots.Eigth.index)] for teacher in OGS_DAYS[day]) == 2)
 
-# # vordefinierte ogs teachers
-# for ogs_teacher in ogs_teachers:
-#     problem.addConstraint(
-#         lpSum(teacher_day_ogs[(ogs_teacher, day)] for day in days) == 1)
+# * jeder lehrer maximal einmal ogs pro tag
+for teacher in Teachers:
+    for day in Days:
+        problem.addConstraint(
+            lpSum(teacher_day_ogs[(teacher.index, day.index, slot.index)] for slot in OgsSlots) <= 1)
 
-# # jeder lehrer maximal einmal ogs
-# for teacher in teachers:
-#     problem.addConstraint(
-#         lpSum(teacher_day_ogs[(teacher, day)] for day in days) <= 1)
+# * lehrer haben in der 6. stunde unterricht, wenn sie im anschluss ogs haben
+for teacher in Teachers:
+    for day in Days:
+        problem.addConstraint(
+            teacher_day_ogs[(teacher.index, day.index, OgsSlots.Eigth.index)] <= teacher_school_end[(teacher.index, day.index, Lessons.Sixth.index)])
 
-# # an jedem tag maxinmal einmal ogs
-# for day in days:
-#     problem.addConstraint(
-#         lpSum(teacher_day_ogs[(teacher, day)] for teacher in teachers) <= 1)
+# * lehrer haben in der 4. stunde unterricht, wenn sie im anschluss ogs haben
+for teacher in Teachers:
+    for day in Days:
+        problem.addConstraint(
+            teacher_day_ogs[(teacher.index, day.index, OgsSlots.Fifth.index)] <= teacher_school_end[(teacher.index, day.index, Lessons.Fourth.index)])
 
-# problem.addConstraint(lpSum(teacher_day_ogs[(
-#     teacher, conference_day)] for teacher in teachers) == 0)  # *am konferenz tag keine ogs
-
-# # im anschluss an die sechste stunde
-# for teacher in teachers:
-#     for day in days:
-#         problem.addConstraint(
-#             teacher_day_ogs[(teacher, day)] <= teacher_school_end[(teacher, day, Stunde_Sechste)])
-#
 # endregion
 
 # * förder: 2 stunden 4-5 mal die woche migrationskinder; möglichst alle klassen unterricht (muss aber nicht); Ein Lehrer
@@ -568,6 +584,18 @@ for day in Days:
 # stufenweise zusammen
 # ein lehrer
 # doppelstunde
+
+
+# TODO test if this makes sense:
+# * if a class does not have a subject, no teacher can teach sports in that class
+for clazz in Classes:
+    for subject in Subjects:
+        if subject not in clazz.value.lessoncount:
+            for day in Days:
+                for lesson in Lessons:
+                    for combo in subject_lessons[subject]:
+                        problem.addConstraint(
+                            x[(day.index, lesson.index, clazz.index, combo)] == 0)
 
 for clazz in Classes.but_remedial():
     if Subjects.Sports not in clazz.value.lessoncount:
@@ -705,56 +733,74 @@ for day in Days:
                     continue
                 lesson_data.append(", ".join(list(map(
                     lambda x: x.text, teacher_subject_combinations[combo]["teachers"]))) + teacher_subject_combinations[combo]["subject"].value.short)
-    day_data[day].append(["7.", *["" for clazz in Classes]])
-    # teacher_ogs_data = ["8."]#todo ogs
-    # for teacher in teachers:
-    #     if value(teacher_day_ogs[(teacher, day)]) == 1:
-    #         teacher_ogs_data.append("OGS von %s" %
-    #                                 (teachers_cleartext[teacher]))
-    # day_data[day].append(teacher_ogs_data)
+        if lesson == Lessons.Fifth and sum(value(teacher_day_ogs[(teacher.index, day.index, OgsSlots.Fifth.index)]) for teacher in Teachers) >= 1:
+            teachers = []
+            for teacher in Teachers:
+                if value(teacher_day_ogs[(teacher.index, day.index, OgsSlots.Fifth.index)]) == 1:
+                    teachers.append(teacher.text)
+            lesson_data.append(", ".join(teachers))
+        else:
+            lesson_data.append("-")
+    day_data[day].append(["7.", *["-" for clazz in Classes]])
+    teacher_ogs_data = ["8."]
+    if sum(value(teacher_day_ogs[(teacher.index, day.index, OgsSlots.Eigth.index)]) for teacher in Teachers) >= 1:
+        teachers = []
+        for teacher in Teachers:
+            if value(teacher_day_ogs[(teacher.index, day.index, OgsSlots.Eigth.index)]) == 1:
+                teachers.append(teacher.text)
+        for _ in Classes:
+            teacher_ogs_data.append("-")
+        teacher_ogs_data.append(", ".join(teachers))
+    day_data[day].append(teacher_ogs_data)
+
+# region working hours
+# workinghours_data = []
+# workinghours_data.append(["Arbeitsstunden", *[t.text for t in Teachers]])
+# workinghours_data.append(
+#     ["Soll-Stunden", *[t.value.lesson_ct for t in Teachers]])
+# real_hours = ["Ist-Stunden"]
+# for teacher in Teachers:
+#     hours = sum(value(x[(day.index, lesson.index, clazz.index, combo)])
+#                 for day in Days for lesson in Lessons for clazz in Classes for combo in n_teacher_subject_combinations if teacher in teacher_subject_combinations[combo]["teachers"])
+#     hours += sum(value(teacher_day_ogs[(teacher.index, day.index, slot.index)])
+#                  for day in Days for slot in OgsSlots)
+#     real_hours.append(hours)
+# workinghours_data.append(real_hours)
+# endregion
+
+# region hours per class
+# endregion
+
+# region console output
 for day in Days:
     print()
     print(day.text + ":")
-    print(tabulate(day_data[day], headers=[
-        "Stunde", *["%s - %s" % x for x in zip([c.text for c in Classes], list(map(lambda t: ",".join([a.text for a in t]), [
-            c.value.classteachers for c in Classes])))]]))
+    header = ["Stunde"]
+    for clazz in Classes:
+        header.append("%s - %s" % (clazz.text, ",".join(
+            [a.text for a in clazz.value.classteachers])))
+    header.append("OGS")
+    print(tabulate(day_data[day], headers=header))
 
-#############################################
+# print()
+# print(workinghours_data)
+# print(tabulate(workinghours_data))
+# endregion
 
-day_data = {}
-for day in Days:
-    day_data[day] = []
-
-for day in Days:
-    for lesson in Lessons:
-        lesson_data = [lesson.text]
-        day_data[day].append(lesson_data)
+# region write to file
+with open("Stundenplan.csv", "w", encoding="utf-8") as text_file:
+    for day in Days:
+        header = [day.text, "Stunde"]
         for clazz in Classes:
-            if sum(value(x[(day.index, lesson.index, clazz.index, combo)]) for combo in n_teacher_subject_combinations) == 0:
-                lesson_data.append("-")
-                continue
-
-            for combo in n_teacher_subject_combinations:
-                if value(x[(day.index, lesson.index, clazz.index, combo)]) == 0:
-                    continue
-                lesson_data.append(", ".join(list(map(
-                    lambda x: x.text, teacher_subject_combinations[combo]["teachers"]))) + teacher_subject_combinations[combo]["subject"].value.short)
-    day_data[day].append(["7.", *["" for clazz in Classes]])
-    # teacher_ogs_data = ["8."] #todo ogs
-    # for teacher in teachers:
-    #     if value(teacher_day_ogs[(teacher, day)]) == 1:
-    #         teacher_ogs_data.append("OGS von %s" %
-    #                                 (teachers_cleartext[teacher]))
-    # for e in range(len(classes)-len(teacher_ogs_data)):
-    #     teacher_ogs_data.append(";")
-    # day_data[day].append(teacher_ogs_data)
-text_file = codecs.open("Stundenplan.csv", "w", "utf-8")
-
-for day in Days:
-    text_file.write(";".join([day.text,
-                              "Stunde", *["%s - %s" % x for x in zip([c.text for c in Classes], list(map(lambda t: ",".join([a.text for a in t]), [
-                                  c.value.classteachers for c in Classes])))]])+"\n")
-    for lesson in Lessons.range():
-        text_file.write(";"+";".join(day_data[day][lesson])+"\n")
-    text_file.write("\n")
-text_file.close()
+            header.append("%s - %s" % (clazz.text, ",".join(
+                [a.text for a in clazz.value.classteachers])))
+        header.append("OGS")
+        # text_file.write(";".join([day.text,
+        #                           "Stunde", *["%s - %s" % x for x in zip([c.text for c in Classes], list(map(lambda t: ",".join([a.text for a in t]), [
+        #                               c.value.classteachers for c in Classes])))]])+"\n")
+        text_file.write(";".join(header)+"\n")
+        for lesson in range(len(day_data[day])):
+            text_file.write(";"+";".join(day_data[day][lesson])+"\n")
+        text_file.write("\n")
+    text_file.close()
+# endregion

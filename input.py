@@ -1,7 +1,7 @@
 
 from typing import List
 from config import Days, Lessons, Subjects
-from models import BaseEnum, ClassLessonCount, ClassLevel, Clazz, Teacher
+from models import BaseEnum, ClassLessonCount, ClassLevel, Clazz, OgsSlot, Teacher
 
 # * Konferenz
 CONFERENCE_DAY = Days.Monday
@@ -40,8 +40,6 @@ class Teachers(BaseEnum):
     @staticmethod
     def text_by_index(index) -> str:
         return Teachers.by_index(index).text
-
-# TODO ogs teachers
 
 # * Klassen
 
@@ -145,3 +143,12 @@ SWIMMING_SLOTS = {
     Days.Tuesday: [Lessons.First, Lessons.Second],
     Days.Thursday: [Lessons.Third, Lessons.Fourth]
 }
+
+# region ogs
+OGS_DAYS = {
+    Days.Tuesday: [Teachers.Oc, Teachers.Kl],
+    Days.Wednesday: [Teachers.Si, Teachers.Kl, Teachers.Ma],
+    Days.Thursday: [Teachers.Ke, Teachers.Him],
+    Days.Friday: [Teachers.Ma, Teachers.Gr],
+}
+# endregion

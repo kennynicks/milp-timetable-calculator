@@ -69,3 +69,8 @@ class Day:
 @dataclass
 class Lesson:
     text: str
+
+
+@dataclass
+class OgsSlot:
+    text: str

@@ -1,5 +1,5 @@
 
-from models import BaseEnum, Day, Lesson, Subject
+from models import BaseEnum, Day, Lesson, OgsSlot, Subject
 
 
 class Days(BaseEnum):
@@ -71,3 +71,8 @@ class Subjects(BaseEnum):
     @staticmethod
     def text_by_index(index) -> str:
         return Subjects.by_index(index).text
+
+
+class OgsSlots(BaseEnum):
+    Fifth = OgsSlot("5.")
+    Eigth = OgsSlot("8.")
